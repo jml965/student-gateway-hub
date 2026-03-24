@@ -1,42 +1,49 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
+import { useState, useEffect } from "react";
+import { AuthProvider } from "@/hooks/useAuth";
+import HomePage from "@/pages/HomePage";
+import { LoginPage, SignupPage, ForgotPage } from "@/pages/AuthPages";
+import ReferralPage from "@/pages/ReferralPage";
+import AdminPage from "@/pages/AdminPage";
 
-const queryClient = new QueryClient();
+type Page = "home" | "login" | "signup" | "forgot" | "referral" | "admin";
+type Lang = "ar" | "en";
+type Theme = "light" | "dark";
 
-function Home() {
+export default function App() {
+  const [page, setPage] = useState<Page>("home");
+  const [lang, setLang] = useState<Lang>("ar");
+  const [theme, setTheme] = useState<Theme>("light");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    document.body.style.fontFamily = lang === "ar" ? "'Cairo','Inter',sans-serif" : "'Inter','Cairo',sans-serif";
+    document.body.style.backgroundColor = theme === "dark" ? "#0d1117" : "#f8faff";
+  }, [lang, theme]);
+
+  const navigate = (p: string) => setPage(p as Page);
+
+  const commonProps = { lang, theme, navigate };
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Replit Agent is building...</h1>
-        <p className="mt-2 text-sm text-gray-600">Your app will appear here once it's ready.</p>
+    <AuthProvider>
+      <div style={{ width: "100%", height: "100vh", overflow: "hidden" }}>
+        {page === "home" && (
+          <HomePage {...commonProps} setLang={setLang} setTheme={setTheme} isMobile={isMobile} />
+        )}
+        {page === "login" && <LoginPage {...commonProps} />}
+        {page === "signup" && <SignupPage {...commonProps} />}
+        {page === "forgot" && <ForgotPage {...commonProps} />}
+        {page === "referral" && <ReferralPage {...commonProps} />}
+        {page === "admin" && <AdminPage {...commonProps} />}
       </div>
-    </div>
+    </AuthProvider>
   );
 }
-
-function Router() {
-  return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
-
-export default App;

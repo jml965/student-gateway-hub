@@ -1,10 +1,14 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+app.use(compression());
 
 app.use(
   pinoHttp({
@@ -25,10 +29,32 @@ app.use(
     },
   }),
 );
-app.use(cors());
-app.use(express.json());
+
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
+
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "too_many_requests", message: "Too many attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/auth", authLimiter);
+app.use("/api", generalLimiter);
 app.use("/api", router);
 
 export default app;
