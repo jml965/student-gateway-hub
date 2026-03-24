@@ -1,5 +1,5 @@
 import "./_group.css";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   GraduationCap,
   Home,
@@ -13,6 +13,7 @@ import {
   Sun,
   Globe,
   ChevronRight,
+  ChevronLeft,
   Send,
   Building2,
   Building,
@@ -37,7 +38,6 @@ const t = {
     logo: "Baansy",
     tagline: "منصة التسجيل الجامعي الذكية",
     newChat: "محادثة جديدة",
-    todayLabel: "اليوم",
     history: ["هل يوجد غيرهم", "مرحباً", "استفسار عن الفيزا"],
     assistantLabel: "مساعد Baansy الذكي",
     welcomeTitle: "مرحباً بك في Baansy",
@@ -48,12 +48,12 @@ const t = {
     servicesLabel: "كيف يمكنني مساعدتك؟",
     services: [
       { icon: GraduationCap, label: "تسجيل الجامعات", desc: "4000+ خاصة و15000+ حكومية" },
-      { icon: Home, label: "السكن الطلابي", desc: "إيجاد سكن قريب من جامعتك" },
-      { icon: Heart, label: "التأمين الصحي", desc: "تغطية طبية شاملة للطلاب" },
-      { icon: Plane, label: "استقبال من المطار", desc: "خدمة النقل وحجز التذاكر" },
-      { icon: FileText, label: "تجهيز الفيزا", desc: "مساعدة كاملة في ملف الفيزا" },
-      { icon: IdCard, label: "البطاقة الطلابية الدولية", desc: "خصومات حصرية حول العالم" },
-      { icon: CreditCard, label: "كارت فيزا / ماستركارد", desc: "بطاقة مسبقة الدفع للطلاب" },
+      { icon: Home, label: "السكن الطلابي", desc: "إيجاد سكن قريب" },
+      { icon: Heart, label: "التأمين الصحي", desc: "تغطية طبية شاملة" },
+      { icon: Plane, label: "استقبال من المطار", desc: "خدمة النقل والتذاكر" },
+      { icon: FileText, label: "تجهيز الفيزا", desc: "مساعدة كاملة بالملف" },
+      { icon: IdCard, label: "البطاقة الطلابية", desc: "خصومات حصرية" },
+      { icon: CreditCard, label: "كارت فيزا / ماستر", desc: "بطاقة مسبقة الدفع" },
     ],
     disclaimer: "قد يقدم Baansy AI معلومات غير دقيقة",
     switchLang: "EN",
@@ -64,7 +64,6 @@ const t = {
     loggedInAs: "أحمد",
     themeLight: "وضع فاتح",
     themeDark: "وضع داكن",
-    menuTitle: "القائمة",
     recentChats: "المحادثات الأخيرة",
   },
   en: {
@@ -73,7 +72,6 @@ const t = {
     logo: "Baansy",
     tagline: "Smart University Registration",
     newChat: "New Chat",
-    todayLabel: "Today",
     history: ["Are there others?", "Hello", "Visa inquiry"],
     assistantLabel: "Baansy AI Assistant",
     welcomeTitle: "Welcome to Baansy",
@@ -83,13 +81,13 @@ const t = {
     inputPlaceholder: "Type your message...",
     servicesLabel: "How can I help you?",
     services: [
-      { icon: GraduationCap, label: "University Registration", desc: "4,000+ private & 15,000+ public" },
-      { icon: Home, label: "Student Housing", desc: "Find housing near your university" },
-      { icon: Heart, label: "Health Insurance", desc: "Comprehensive student medical coverage" },
-      { icon: Plane, label: "Airport Pickup", desc: "Transfer services & ticket booking" },
-      { icon: FileText, label: "Visa Assistance", desc: "Complete help with student visa files" },
-      { icon: IdCard, label: "International Student Card", desc: "Exclusive discounts worldwide" },
-      { icon: CreditCard, label: "Visa / Mastercard", desc: "Prepaid card for students" },
+      { icon: GraduationCap, label: "University Reg.", desc: "4,000+ private & 15,000+ public" },
+      { icon: Home, label: "Student Housing", desc: "Near your university" },
+      { icon: Heart, label: "Health Insurance", desc: "Full student coverage" },
+      { icon: Plane, label: "Airport Pickup", desc: "Transfers & tickets" },
+      { icon: FileText, label: "Visa Assistance", desc: "Full visa file help" },
+      { icon: IdCard, label: "Student Card", desc: "Worldwide discounts" },
+      { icon: CreditCard, label: "Prepaid Card", desc: "Visa / Mastercard" },
     ],
     disclaimer: "Baansy AI may provide inaccurate information",
     switchLang: "عر",
@@ -100,7 +98,6 @@ const t = {
     loggedInAs: "Ahmed",
     themeLight: "Light Mode",
     themeDark: "Dark Mode",
-    menuTitle: "Menu",
     recentChats: "Recent Chats",
   },
 };
@@ -111,10 +108,14 @@ export function HomepageMobile() {
   const [inputVal, setInputVal] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const tx = t[lang];
   const isDark = theme === "dark";
+  const isAr = lang === "ar";
 
+  // Colors
   const bg = isDark ? "#0d1117" : "#f8faff";
   const textMain = isDark ? "#f1f5f9" : "#1e293b";
   const textMuted = isDark ? "#94a3b8" : "#64748b";
@@ -132,6 +133,38 @@ export function HomepageMobile() {
   const ctrlBg = isDark ? "#1e293b" : "#dbeafe";
   const ctrlColor = isDark ? "#93c5fd" : "#1d4ed8";
 
+  // Group services into pairs
+  const services = tx.services;
+  const pairs: typeof services[] = [];
+  for (let i = 0; i < services.length; i += 2) {
+    pairs.push(services.slice(i, i + 2));
+  }
+  const totalSlides = pairs.length;
+
+  const goToSlide = (idx: number) => {
+    const clamped = Math.max(0, Math.min(idx, totalSlides - 1));
+    setSlideIndex(clamped);
+    if (carouselRef.current) {
+      const child = carouselRef.current.children[clamped] as HTMLElement;
+      child?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+    }
+  };
+
+  const handleCarouselScroll = () => {
+    if (!carouselRef.current) return;
+    const el = carouselRef.current;
+    const scrollLeft = Math.abs(el.scrollLeft);
+    const slideWidth = el.offsetWidth;
+    const idx = Math.round(scrollLeft / slideWidth);
+    setSlideIndex(idx);
+  };
+
+  // ── Drawer: always opens from same side as hamburger ──
+  // Arabic → hamburger on RIGHT → drawer from RIGHT
+  // English → hamburger on LEFT  → drawer from LEFT
+  const drawerRight = isAr ? (menuOpen ? 0 : -284) : "auto";
+  const drawerLeft  = !isAr ? (menuOpen ? 0 : -284) : "auto";
+
   return (
     <div
       style={{
@@ -147,7 +180,7 @@ export function HomepageMobile() {
         position: "relative",
       }}
     >
-      {/* ── Drawer Overlay ── */}
+      {/* ── Overlay ── */}
       {menuOpen && (
         <div
           onClick={() => setMenuOpen(false)}
@@ -164,18 +197,20 @@ export function HomepageMobile() {
         style={{
           position: "absolute",
           top: 0, bottom: 0,
-          right: lang === "ar" ? (menuOpen ? 0 : -280) : "auto",
-          left: lang === "en" ? (menuOpen ? 0 : -280) : "auto",
-          width: 280,
+          right: drawerRight,
+          left: drawerLeft,
+          width: 284,
           backgroundColor: drawerBg,
-          borderLeft: lang === "ar" ? "none" : `1px solid ${drawerBorder}`,
-          borderRight: lang === "ar" ? `1px solid ${drawerBorder}` : "none",
+          borderLeft: isAr ? "none" : `1px solid ${drawerBorder}`,
+          borderRight: isAr ? `1px solid ${drawerBorder}` : "none",
           zIndex: 50,
           display: "flex",
           flexDirection: "column",
-          padding: "0",
+          direction: tx.dir,
           transition: "right 0.28s cubic-bezier(0.4,0,0.2,1), left 0.28s cubic-bezier(0.4,0,0.2,1)",
-          boxShadow: menuOpen ? (lang === "ar" ? "-8px 0 32px rgba(0,0,0,0.25)" : "8px 0 32px rgba(0,0,0,0.25)") : "none",
+          boxShadow: menuOpen
+            ? (isAr ? "-6px 0 28px rgba(0,0,0,0.22)" : "6px 0 28px rgba(0,0,0,0.22)")
+            : "none",
         }}
       >
         {/* Drawer header */}
@@ -208,18 +243,16 @@ export function HomepageMobile() {
           </button>
         </div>
 
-        {/* New Chat inside drawer */}
+        {/* New Chat */}
         <div style={{ padding: "14px 14px 8px" }}>
-          <button
-            style={{
-              width: "100%", backgroundColor: "#2563eb", color: "#fff",
-              border: "none", borderRadius: 10, padding: "10px",
-              fontFamily: tx.font, fontSize: 13, fontWeight: 600,
-              cursor: "pointer", display: "flex", alignItems: "center",
-              gap: 8, justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(37,99,235,0.3)",
-            }}
-          >
+          <button style={{
+            width: "100%", backgroundColor: "#2563eb", color: "#fff",
+            border: "none", borderRadius: 10, padding: "10px",
+            fontFamily: tx.font, fontSize: 13, fontWeight: 600,
+            cursor: "pointer", display: "flex", alignItems: "center",
+            gap: 8, justifyContent: "center",
+            boxShadow: "0 2px 8px rgba(37,99,235,0.3)",
+          }}>
             <Plus size={15} />
             {tx.newChat}
           </button>
@@ -231,12 +264,8 @@ export function HomepageMobile() {
             {tx.recentChats}
           </div>
           {tx.history.map((item, i) => (
-            <div key={i} style={{
-              padding: "9px 10px", borderRadius: 8, cursor: "pointer",
-              fontSize: 13, color: textMuted,
-              display: "flex", alignItems: "center", gap: 8,
-              marginBottom: 2,
-            }}
+            <div key={i}
+              style={{ padding: "9px 10px", borderRadius: 8, cursor: "pointer", fontSize: 13, color: textMuted, display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}
               onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = isDark ? "#1e293b" : "#dbeafe"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}
             >
@@ -246,346 +275,295 @@ export function HomepageMobile() {
           ))}
         </div>
 
-        {/* Drawer bottom: controls + auth */}
+        {/* Drawer bottom */}
         <div style={{ padding: "12px 14px 20px", borderTop: `1px solid ${drawerBorder}`, display: "flex", flexDirection: "column", gap: 8 }}>
-          {/* Theme + Language */}
           <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => setTheme(isDark ? "light" : "dark")}
-              style={{
-                flex: 1, backgroundColor: ctrlBg, color: ctrlColor,
-                border: "none", borderRadius: 8, padding: "8px 6px",
-                cursor: "pointer", display: "flex", alignItems: "center",
-                justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 500,
-                fontFamily: tx.font,
-              }}
-            >
+            <button onClick={() => setTheme(isDark ? "light" : "dark")} style={{ flex: 1, backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "8px 6px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 500, fontFamily: tx.font }}>
               {isDark ? <Sun size={13} /> : <Moon size={13} />}
               {isDark ? tx.themeLight : tx.themeDark}
             </button>
-            <button
-              onClick={() => { setLang(lang === "ar" ? "en" : "ar"); }}
-              style={{
-                flex: 1, backgroundColor: ctrlBg, color: ctrlColor,
-                border: "none", borderRadius: 8, padding: "8px 6px",
-                cursor: "pointer", display: "flex", alignItems: "center",
-                justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 600,
-                fontFamily: tx.font,
-              }}
-            >
+            <button onClick={() => setLang(lang === "ar" ? "en" : "ar")} style={{ flex: 1, backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "8px 6px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 600, fontFamily: tx.font }}>
               <Globe size={13} />
               {tx.switchLang}
             </button>
           </div>
 
-          {/* Auth */}
           {isLoggedIn ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "8px 10px",
-                backgroundColor: accentBlueSoft,
-                borderRadius: 9,
-                border: `1px solid ${isDark ? "#1d4ed830" : "#bfdbfe"}`,
-              }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                  background: "linear-gradient(135deg, #1d4ed8, #60a5fa)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", backgroundColor: accentBlueSoft, borderRadius: 9, border: `1px solid ${isDark ? "#1d4ed830" : "#bfdbfe"}` }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg, #1d4ed8, #60a5fa)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <User size={14} color="#fff" />
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 600, color: accentBlueText }}>
-                  {lang === "ar" ? "مرحباً، " : "Hi, "}{tx.loggedInAs}
+                  {isAr ? "مرحباً، " : "Hi, "}{tx.loggedInAs}
                 </span>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <button style={{
-                  flex: 1, backgroundColor: ctrlBg, color: ctrlColor,
-                  border: "none", borderRadius: 8, padding: "8px 6px",
-                  cursor: "pointer", display: "flex", alignItems: "center",
-                  justifyContent: "center", gap: 5, fontSize: 11, fontWeight: 500,
-                  fontFamily: tx.font,
-                }}>
-                  <Settings size={13} />
-                  {tx.settingsBtn}
+                <button style={{ flex: 1, backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "8px 6px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 11, fontWeight: 500, fontFamily: tx.font }}>
+                  <Settings size={13} />{tx.settingsBtn}
                 </button>
-                <button
-                  onClick={() => setIsLoggedIn(false)}
-                  style={{
-                    flex: 1,
-                    backgroundColor: isDark ? "#2d1515" : "#fff1f2",
-                    color: isDark ? "#f87171" : "#dc2626",
-                    border: `1px solid ${isDark ? "#7f1d1d40" : "#fecaca"}`,
-                    borderRadius: 8, padding: "8px 6px",
-                    cursor: "pointer", display: "flex", alignItems: "center",
-                    justifyContent: "center", gap: 5, fontSize: 11, fontWeight: 600,
-                    fontFamily: tx.font,
-                  }}
-                >
-                  <LogOut size={13} />
-                  {tx.logoutBtn}
+                <button onClick={() => setIsLoggedIn(false)} style={{ flex: 1, backgroundColor: isDark ? "#2d1515" : "#fff1f2", color: isDark ? "#f87171" : "#dc2626", border: `1px solid ${isDark ? "#7f1d1d40" : "#fecaca"}`, borderRadius: 8, padding: "8px 6px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 11, fontWeight: 600, fontFamily: tx.font }}>
+                  <LogOut size={13} />{tx.logoutBtn}
                 </button>
               </div>
             </div>
           ) : (
             <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setIsLoggedIn(true)}
-                style={{
-                  flex: 1, backgroundColor: ctrlBg, color: ctrlColor,
-                  border: "none", borderRadius: 8, padding: "9px 6px",
-                  cursor: "pointer", display: "flex", alignItems: "center",
-                  justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 500,
-                  fontFamily: tx.font,
-                }}
-              >
-                <LogIn size={13} />
-                {tx.loginBtn}
+              <button onClick={() => setIsLoggedIn(true)} style={{ flex: 1, backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "9px 6px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 500, fontFamily: tx.font }}>
+                <LogIn size={13} />{tx.loginBtn}
               </button>
-              <button
-                onClick={() => setIsLoggedIn(true)}
-                style={{
-                  flex: 1,
-                  background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
-                  color: "#fff",
-                  border: "none", borderRadius: 8, padding: "9px 6px",
-                  cursor: "pointer", display: "flex", alignItems: "center",
-                  justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 600,
-                  fontFamily: tx.font,
-                  boxShadow: "0 2px 6px rgba(37,99,235,0.3)",
-                }}
-              >
-                <UserPlus size={13} />
-                {tx.signupBtn}
+              <button onClick={() => setIsLoggedIn(true)} style={{ flex: 1, background: "linear-gradient(135deg, #1d4ed8, #3b82f6)", color: "#fff", border: "none", borderRadius: 8, padding: "9px 6px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 600, fontFamily: tx.font, boxShadow: "0 2px 6px rgba(37,99,235,0.3)" }}>
+                <UserPlus size={13} />{tx.signupBtn}
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Top Bar ── */}
+      {/* ── Top Bar ── ALWAYS LTR flex so positions are explicit ── */}
       <div style={{
         display: "flex", alignItems: "center",
         justifyContent: "space-between",
-        padding: "12px 16px",
+        padding: "10px 14px",
         backgroundColor: topBarBg,
         borderBottom: `1px solid ${topBarBorder}`,
-        flexShrink: 0,
-        zIndex: 10,
+        flexShrink: 0, zIndex: 10,
+        direction: "ltr",
       }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 9,
-            background: "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 2px 8px rgba(37,99,235,0.3)",
-          }}>
-            <GraduationCap size={17} color="#fff" />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: textMain, lineHeight: 1.2 }}>{tx.logo}</div>
-            <div style={{ fontSize: 9, color: textMuted }}>{tx.tagline}</div>
-          </div>
+        {/* Arabic: stats on LEFT | English: hamburger+logo on LEFT */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {isAr ? (
+            /* Arabic left side: stats chips */
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 3, backgroundColor: accentBlueSoft, color: accentBlueText, borderRadius: 20, padding: "3px 8px", fontSize: 10, fontWeight: 600, border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}` }}>
+                <Building size={9} />{tx.stat1}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 3, backgroundColor: accentBlueSoft, color: accentBlueText, borderRadius: 20, padding: "3px 8px", fontSize: 10, fontWeight: 600, border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}` }}>
+                <Building2 size={9} />{tx.stat2}
+              </div>
+            </>
+          ) : (
+            /* English left side: hamburger + logo */
+            <>
+              <button
+                onClick={() => setMenuOpen(true)}
+                style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: isDark ? "#1e293b" : "#f1f5f9", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, color: textMuted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <Menu size={18} />
+              </button>
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(37,99,235,0.3)" }}>
+                <GraduationCap size={15} color="#fff" />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: textMain, lineHeight: 1.2 }}>{tx.logo}</div>
+                <div style={{ fontSize: 9, color: textMuted }}>{tx.tagline}</div>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Right: stats chip + hamburger */}
+        {/* Arabic: logo+hamburger on RIGHT | English: stats on RIGHT */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Compact stats */}
-          <div style={{
-            display: "flex", gap: 4,
-          }}>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 3,
-              backgroundColor: accentBlueSoft,
-              color: accentBlueText,
-              borderRadius: 20, padding: "3px 8px",
-              fontSize: 10, fontWeight: 600,
-              border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}`,
-            }}>
-              <Building size={9} />
-              {tx.stat1}
-            </div>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 3,
-              backgroundColor: accentBlueSoft,
-              color: accentBlueText,
-              borderRadius: 20, padding: "3px 8px",
-              fontSize: 10, fontWeight: 600,
-              border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}`,
-            }}>
-              <Building2 size={9} />
-              {tx.stat2}
-            </div>
-          </div>
-
-          {/* Hamburger */}
-          <button
-            onClick={() => setMenuOpen(true)}
-            style={{
-              width: 36, height: 36, borderRadius: 10,
-              backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
-              border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
-              color: textMuted, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <Menu size={18} />
-          </button>
+          {isAr ? (
+            /* Arabic right side: logo + hamburger */
+            <>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: textMain, lineHeight: 1.2, textAlign: "right" }}>{tx.logo}</div>
+                <div style={{ fontSize: 9, color: textMuted, textAlign: "right" }}>{tx.tagline}</div>
+              </div>
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(37,99,235,0.3)" }}>
+                <GraduationCap size={15} color="#fff" />
+              </div>
+              <button
+                onClick={() => setMenuOpen(true)}
+                style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: isDark ? "#1e293b" : "#f1f5f9", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, color: textMuted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <Menu size={18} />
+              </button>
+            </>
+          ) : (
+            /* English right side: stats chips */
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 3, backgroundColor: accentBlueSoft, color: accentBlueText, borderRadius: 20, padding: "3px 8px", fontSize: 10, fontWeight: 600, border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}` }}>
+                <Building size={9} />{tx.stat1}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 3, backgroundColor: accentBlueSoft, color: accentBlueText, borderRadius: 20, padding: "3px 8px", fontSize: 10, fontWeight: 600, border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}` }}>
+                <Building2 size={9} />{tx.stat2}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* ── Chat Content ── */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px 16px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px 14px 8px", display: "flex", flexDirection: "column", alignItems: "center" }}>
 
         {/* Welcome */}
-        <div style={{ width: "100%", textAlign: "center", marginBottom: 24 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 18,
-            background: "linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 14px",
-            boxShadow: "0 6px 20px rgba(37,99,235,0.35)",
-          }}>
-            <GraduationCap size={26} color="#fff" />
+        <div style={{ width: "100%", textAlign: "center", marginBottom: 18 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 16, background: "linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", boxShadow: "0 6px 20px rgba(37,99,235,0.35)" }}>
+            <GraduationCap size={24} color="#fff" />
           </div>
-          <h1 style={{
-            fontSize: 22, fontWeight: 800, margin: "0 0 8px",
-            background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            lineHeight: 1.3,
-          }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 6px", background: "linear-gradient(135deg, #1d4ed8, #3b82f6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", lineHeight: 1.3 }}>
             {tx.welcomeTitle}
           </h1>
-          <p style={{ fontSize: 13, color: textMuted, margin: 0, lineHeight: 1.6 }}>
-            {tx.welcomeSub}
-          </p>
+          <p style={{ fontSize: 12, color: textMuted, margin: 0 }}>{tx.welcomeSub}</p>
         </div>
 
         {/* Assistant label */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6, marginBottom: 14,
-          fontSize: 12, color: textMuted, fontWeight: 500,
-          width: "100%",
-          justifyContent: lang === "ar" ? "flex-end" : "flex-start",
-        }}>
-          <Sparkles size={13} color={accentBlue} />
+        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 12, fontSize: 11, color: textMuted, fontWeight: 500, width: "100%", justifyContent: isAr ? "flex-end" : "flex-start" }}>
+          <Sparkles size={12} color={accentBlue} />
           {tx.assistantLabel}
         </div>
 
-        {/* Services Label */}
+        {/* Services label */}
         <div style={{ width: "100%", marginBottom: 10 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: textMuted, margin: 0, textAlign: lang === "ar" ? "right" : "left" }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: textMuted, margin: 0, textAlign: isAr ? "right" : "left" }}>
             {tx.servicesLabel}
           </p>
         </div>
 
-        {/* Service Cards — single column on mobile */}
-        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 9 }}>
-          {tx.services.map((svc, i) => {
-            const Icon = svc.icon;
-            return (
+        {/* ── Carousel: 2 cards per slide, horizontal scroll snap ── */}
+        <div style={{ width: "100%", position: "relative" }}>
+          {/* Scrollable track */}
+          <div
+            ref={carouselRef}
+            onScroll={handleCarouselScroll}
+            style={{
+              display: "flex",
+              overflowX: "auto",
+              scrollSnapType: "x mandatory",
+              scrollBehavior: "smooth",
+              gap: 0,
+              width: "100%",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
+            {pairs.map((pair, pi) => (
               <div
-                key={i}
+                key={pi}
                 style={{
-                  backgroundColor: cardBg,
-                  border: `1px solid ${cardBorder}`,
-                  borderRadius: 12,
-                  padding: "12px 14px",
-                  cursor: "pointer",
+                  minWidth: "100%",
+                  scrollSnapAlign: "start",
                   display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  boxShadow: isDark ? "none" : "0 1px 3px rgba(0,0,0,0.06)",
-                  transition: "all 0.15s",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = accentBlue;
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 10px rgba(37,99,235,0.15)";
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = cardBorder;
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = isDark ? "none" : "0 1px 3px rgba(0,0,0,0.06)";
+                  gap: 8,
+                  padding: "2px 2px 4px",
+                  boxSizing: "border-box",
                 }}
               >
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                  background: isDark
-                    ? "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)"
-                    : "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <Icon size={18} color={isDark ? "#93c5fd" : "#1d4ed8"} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: textMain }}>{svc.label}</div>
-                  <div style={{ fontSize: 11, color: textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{svc.desc}</div>
-                </div>
-                <ChevronRight
-                  size={14}
-                  color={textMuted}
-                  style={{ transform: lang === "ar" ? "rotate(180deg)" : "none", flexShrink: 0 }}
-                />
+                {pair.map((svc, si) => {
+                  const Icon = svc.icon;
+                  return (
+                    <div
+                      key={si}
+                      style={{
+                        flex: 1,
+                        backgroundColor: cardBg,
+                        border: `1px solid ${cardBorder}`,
+                        borderRadius: 12,
+                        padding: "12px 10px",
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: isAr ? "flex-end" : "flex-start",
+                        gap: 8,
+                        boxShadow: isDark ? "none" : "0 1px 4px rgba(0,0,0,0.07)",
+                        transition: "border-color 0.15s, box-shadow 0.15s",
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = accentBlue; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(37,99,235,0.15)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = cardBorder; (e.currentTarget as HTMLDivElement).style.boxShadow = isDark ? "none" : "0 1px 4px rgba(0,0,0,0.07)"; }}
+                    >
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: isDark ? "linear-gradient(135deg, #1e3a8a, #1d4ed8)" : "linear-gradient(135deg, #eff6ff, #dbeafe)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Icon size={18} color={isDark ? "#93c5fd" : "#1d4ed8"} />
+                      </div>
+                      <div style={{ width: "100%" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: textMain, marginBottom: 2, textAlign: isAr ? "right" : "left" }}>{svc.label}</div>
+                        <div style={{ fontSize: 10, color: textMuted, textAlign: isAr ? "right" : "left", lineHeight: 1.4 }}>{svc.desc}</div>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: isAr ? "flex-start" : "flex-end", width: "100%" }}>
+                        {isAr
+                          ? <ChevronLeft size={13} color={accentBlue} />
+                          : <ChevronRight size={13} color={accentBlue} />}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Navigation row: prev button + dots + next button */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 12 }}>
+            {/* Prev */}
+            <button
+              onClick={() => goToSlide(isAr ? slideIndex + 1 : slideIndex - 1)}
+              disabled={isAr ? slideIndex >= totalSlides - 1 : slideIndex <= 0}
+              style={{
+                width: 28, height: 28, borderRadius: 8,
+                backgroundColor: (isAr ? slideIndex >= totalSlides - 1 : slideIndex <= 0) ? (isDark ? "#1a2332" : "#f1f5f9") : ctrlBg,
+                border: "none", cursor: (isAr ? slideIndex >= totalSlides - 1 : slideIndex <= 0) ? "default" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: (isAr ? slideIndex >= totalSlides - 1 : slideIndex <= 0) ? textMuted : ctrlColor,
+                transition: "all 0.15s",
+              }}
+            >
+              {isAr ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            </button>
+
+            {/* Dots */}
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              {pairs.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goToSlide(i)}
+                  style={{
+                    width: slideIndex === i ? 18 : 7,
+                    height: 7,
+                    borderRadius: 4,
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    backgroundColor: slideIndex === i ? accentBlue : (isDark ? "#334155" : "#cbd5e1"),
+                    transition: "all 0.2s",
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Next */}
+            <button
+              onClick={() => goToSlide(isAr ? slideIndex - 1 : slideIndex + 1)}
+              disabled={isAr ? slideIndex <= 0 : slideIndex >= totalSlides - 1}
+              style={{
+                width: 28, height: 28, borderRadius: 8,
+                backgroundColor: (isAr ? slideIndex <= 0 : slideIndex >= totalSlides - 1) ? (isDark ? "#1a2332" : "#f1f5f9") : ctrlBg,
+                border: "none", cursor: (isAr ? slideIndex <= 0 : slideIndex >= totalSlides - 1) ? "default" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: (isAr ? slideIndex <= 0 : slideIndex >= totalSlides - 1) ? textMuted : ctrlColor,
+                transition: "all 0.15s",
+              }}
+            >
+              {isAr ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Input Bar (fixed bottom) ── */}
-      <div style={{
-        padding: "10px 16px 14px",
-        borderTop: `1px solid ${isDark ? "#1e293b" : "#e2e8f0"}`,
-        backgroundColor: isDark ? "#0d1117" : "#ffffff",
-        flexShrink: 0,
-      }}>
-        <div style={{
-          backgroundColor: inputBg,
-          border: `1.5px solid ${inputBorder}`,
-          borderRadius: 16,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "10px 12px",
-          boxShadow: isDark ? "0 0 0 1px #334155" : "0 2px 8px rgba(0,0,0,0.08)",
-        }}>
+      {/* ── Input Bar ── */}
+      <div style={{ padding: "10px 14px 14px", borderTop: `1px solid ${isDark ? "#1e293b" : "#e2e8f0"}`, backgroundColor: isDark ? "#0d1117" : "#ffffff", flexShrink: 0 }}>
+        <div style={{ backgroundColor: inputBg, border: `1.5px solid ${inputBorder}`, borderRadius: 16, display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", boxShadow: isDark ? "0 0 0 1px #334155" : "0 2px 8px rgba(0,0,0,0.08)" }}>
           <input
             type="text"
             placeholder={tx.inputPlaceholder}
             value={inputVal}
             onChange={e => setInputVal(e.target.value)}
-            style={{
-              flex: 1,
-              border: "none",
-              outline: "none",
-              backgroundColor: "transparent",
-              color: textMain,
-              fontFamily: tx.font,
-              fontSize: 14,
-              direction: tx.dir,
-              textAlign: lang === "ar" ? "right" : "left",
-            }}
+            style={{ flex: 1, border: "none", outline: "none", backgroundColor: "transparent", color: textMain, fontFamily: tx.font, fontSize: 14, direction: tx.dir, textAlign: isAr ? "right" : "left" }}
           />
-          <button
-            style={{
-              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-              background: inputVal.length > 0
-                ? "linear-gradient(135deg, #1d4ed8, #3b82f6)"
-                : isDark ? "#1e293b" : "#f1f5f9",
-              border: "none",
-              cursor: inputVal.length > 0 ? "pointer" : "default",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <Send size={15} color={inputVal.length > 0 ? "#fff" : textMuted} style={{ transform: lang === "ar" ? "rotate(180deg)" : "none" }} />
+          <button style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: inputVal.length > 0 ? "linear-gradient(135deg, #1d4ed8, #3b82f6)" : isDark ? "#1e293b" : "#f1f5f9", border: "none", cursor: inputVal.length > 0 ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Send size={15} color={inputVal.length > 0 ? "#fff" : textMuted} style={{ transform: isAr ? "rotate(180deg)" : "none" }} />
           </button>
         </div>
-        <p style={{ textAlign: "center", fontSize: 9, color: textMuted, margin: "6px 0 0" }}>
-          {tx.disclaimer}
-        </p>
+        <p style={{ textAlign: "center", fontSize: 9, color: textMuted, margin: "5px 0 0" }}>{tx.disclaimer}</p>
       </div>
     </div>
   );
