@@ -555,10 +555,11 @@ router.patch("/universities/:id/payment-settings", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "invalid_id" }); return; }
 
-  const { paymentMode, bankIban, bankName, bankBeneficiary, bankBranch, bankInstructionsAr, bankInstructionsEn } = req.body as {
+  const { paymentMode, bankIban, bankName, bankBeneficiary, bankBranch, bankInstructionsAr, bankInstructionsEn, stripeAccountId } = req.body as {
     paymentMode?: "direct" | "platform";
     bankIban?: string; bankName?: string; bankBeneficiary?: string; bankBranch?: string;
     bankInstructionsAr?: string; bankInstructionsEn?: string;
+    stripeAccountId?: string;
   };
 
   if (paymentMode && !["direct", "platform"].includes(paymentMode)) {
@@ -573,6 +574,7 @@ router.patch("/universities/:id/payment-settings", async (req, res) => {
   if (bankBranch !== undefined) updateData.bankBranch = bankBranch;
   if (bankInstructionsAr !== undefined) updateData.bankInstructionsAr = bankInstructionsAr;
   if (bankInstructionsEn !== undefined) updateData.bankInstructionsEn = bankInstructionsEn;
+  if (stripeAccountId !== undefined) updateData.stripeAccountId = stripeAccountId || null;
 
   const [uni] = await db.update(universitiesTable).set(updateData).where(eq(universitiesTable.id, id)).returning();
   if (!uni) { res.status(404).json({ error: "not_found" }); return; }

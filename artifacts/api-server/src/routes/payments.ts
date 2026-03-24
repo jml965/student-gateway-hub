@@ -10,6 +10,63 @@ const BASE_URL = process.env.REPLIT_DOMAINS
   ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
   : "http://localhost:3000";
 
+// ─── PUBLIC: Stripe webhook (must be before requireAuth, uses raw body) ───
+router.post("/stripe/webhook", async (req, res) => {
+  const sig = req.headers["stripe-signature"] as string;
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  let event: any;
+  try {
+    const stripe = await getUncachableStripeClient();
+    event = stripe.webhooks.constructEvent(req.body, sig, secret ?? "");
+  } catch {
+    res.status(400).send("Webhook signature verification failed");
+    return;
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as any;
+    const { applicationId, studentId } = session.metadata ?? {};
+    if (applicationId && session.payment_status === "paid") {
+      const appId = parseInt(applicationId);
+      const stuId = parseInt(studentId);
+
+      await db.update(paymentsTable)
+        .set({ status: "confirmed", stripePaymentIntentId: session.payment_intent, confirmedAt: new Date() })
+        .where(eq(paymentsTable.stripeSessionId, session.id));
+
+      const [app] = await db.select({ status: applicationsTable.status })
+        .from(applicationsTable).where(eq(applicationsTable.id, appId)).limit(1);
+
+      if (app) {
+        await db.update(applicationsTable)
+          .set({ status: "accepted" })
+          .where(eq(applicationsTable.id, appId));
+
+        await db.insert(applicationEventsTable).values({
+          applicationId: appId,
+          fromStatus: app.status as any,
+          toStatus: "accepted",
+          notes: "Payment confirmed via Stripe",
+          createdBy: stuId,
+        });
+
+        await db.insert(notificationsTable).values({
+          userId: stuId,
+          titleAr: "تم تأكيد الدفع!",
+          titleEn: "Payment Confirmed!",
+          bodyAr: "تم استلام دفعتك بنجاح وتم قبولك نهائياً.",
+          bodyEn: "Your payment was received and your application is now accepted.",
+          type: "application_update",
+          refId: appId,
+        });
+      }
+    }
+  }
+
+  res.json({ received: true });
+});
+
+// ─── Protected routes ───
 router.use(requireAuth);
 
 router.get("/info/:applicationId", async (req: AuthRequest, res) => {
@@ -212,58 +269,32 @@ router.post("/stripe/create-session", async (req: AuthRequest, res) => {
   }
 });
 
-router.post("/stripe/webhook", async (req, res) => {
-  const sig = req.headers["stripe-signature"] as string;
-  let event: any;
-  try {
-    const stripe = await getUncachableStripeClient();
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET ?? "");
-  } catch {
-    res.status(400).send("Webhook signature verification failed");
+// Upload bank transfer receipt (URL of uploaded proof)
+router.post("/bank/upload-receipt", async (req: AuthRequest, res) => {
+  const { paymentId, receiptUrl } = req.body as { paymentId?: number; receiptUrl?: string };
+  if (!paymentId || !receiptUrl) {
+    res.status(400).json({ error: "paymentId and receiptUrl required" });
     return;
   }
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as any;
-    const { applicationId, studentId } = session.metadata ?? {};
-    if (applicationId && session.payment_status === "paid") {
-      const appId = parseInt(applicationId);
-      const stuId = parseInt(studentId);
+  const userId = req.user!.id;
 
-      await db.update(paymentsTable)
-        .set({ status: "confirmed", stripePaymentIntentId: session.payment_intent, confirmedAt: new Date() })
-        .where(eq(paymentsTable.stripeSessionId, session.id));
+  const [payment] = await db
+    .select({ id: paymentsTable.id, studentId: paymentsTable.studentId, status: paymentsTable.status, channel: paymentsTable.channel })
+    .from(paymentsTable)
+    .where(eq(paymentsTable.id, paymentId))
+    .limit(1);
 
-      const [app] = await db.select({ status: applicationsTable.status })
-        .from(applicationsTable).where(eq(applicationsTable.id, appId)).limit(1);
+  if (!payment) { res.status(404).json({ error: "not_found" }); return; }
+  if (payment.studentId !== userId) { res.status(403).json({ error: "forbidden" }); return; }
+  if (payment.channel !== "bank") { res.status(400).json({ error: "only_for_bank_payments" }); return; }
+  if (payment.status === "confirmed") { res.status(400).json({ error: "already_confirmed" }); return; }
 
-      if (app) {
-        await db.update(applicationsTable)
-          .set({ status: "accepted" })
-          .where(eq(applicationsTable.id, appId));
+  await db.update(paymentsTable)
+    .set({ receiptUrl })
+    .where(eq(paymentsTable.id, paymentId));
 
-        await db.insert(applicationEventsTable).values({
-          applicationId: appId,
-          fromStatus: app.status as any,
-          toStatus: "accepted",
-          notes: "Payment confirmed via Stripe",
-          createdBy: stuId,
-        });
-
-        await db.insert(notificationsTable).values({
-          userId: stuId,
-          titleAr: "تم تأكيد الدفع!",
-          titleEn: "Payment Confirmed!",
-          bodyAr: "تم استلام دفعتك بنجاح وتم قبولك نهائياً.",
-          bodyEn: "Your payment was received and your application is now accepted.",
-          type: "application_update",
-          refId: appId,
-        });
-      }
-    }
-  }
-
-  res.json({ received: true });
+  res.json({ ok: true, receiptUrl });
 });
 
 export default router;

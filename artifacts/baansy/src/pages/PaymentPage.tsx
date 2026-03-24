@@ -44,6 +44,8 @@ export default function PaymentPage({ lang, theme, navigate }: Props) {
   const [loading, setLoading] = useState(false);
   const [stripeLoading, setStripeLoading] = useState(false);
   const [bankLoading, setBankLoading] = useState(false);
+  const [receiptUrl, setReceiptUrl] = useState("");
+  const [receiptLoading, setReceiptLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -115,6 +117,22 @@ export default function PaymentPage({ lang, theme, navigate }: Props) {
       setError(e.message ?? "Failed");
     } finally {
       setBankLoading(false);
+    }
+  };
+
+  const handleReceiptUpload = async () => {
+    if (!info?.payment?.id || !receiptUrl.trim()) return;
+    setReceiptLoading(true);
+    setError("");
+    try {
+      await api.post<any>("/payments/bank/upload-receipt", { paymentId: info.payment.id, receiptUrl: receiptUrl.trim() });
+      setSuccess(isAr ? "تم رفع إيصال التحويل. سيتم مراجعته وتأكيد الدفع قريباً." : "Transfer receipt submitted. Admin will review and confirm your payment shortly.");
+      setReceiptUrl("");
+      if (selectedAppId) await loadInfo(selectedAppId);
+    } catch (e: any) {
+      setError(e.message ?? "Failed to upload receipt");
+    } finally {
+      setReceiptLoading(false);
     }
   };
 
@@ -221,6 +239,41 @@ export default function PaymentPage({ lang, theme, navigate }: Props) {
                   {info.payment.channel === "bank" ? (isAr ? "قناة الدفع: تحويل بنكي" : "Channel: Bank Transfer")
                     : (isAr ? "قناة الدفع: بطاقة إلكترونية" : "Channel: Card (Stripe)")}
                 </div>
+                {/* Receipt upload for pending bank payments */}
+                {info.payment.channel === "bank" && info.payment.status === "pending" && (
+                  <div style={{ marginTop: 14, borderTop: `1px solid ${border}`, paddingTop: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: textMain, marginBottom: 8 }}>
+                      {isAr ? "📎 رفع إيصال التحويل" : "📎 Upload Transfer Receipt"}
+                    </div>
+                    <div style={{ fontSize: 12, color: textMuted, marginBottom: 10 }}>
+                      {isAr
+                        ? "بعد إتمام التحويل، يرجى رفع صورة الإيصال أو إدخال رابطه لتسريع عملية التأكيد."
+                        : "After completing the transfer, submit a link to your receipt image to help us confirm faster."}
+                    </div>
+                    {info.payment.receiptUrl ? (
+                      <div style={{ fontSize: 12, color: "#059669", background: "#d1fae5", borderRadius: 8, padding: "8px 12px" }}>
+                        ✅ {isAr ? "تم رفع الإيصال" : "Receipt submitted"}: <a href={info.payment.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#059669" }}>{isAr ? "عرض" : "View"}</a>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          type="url"
+                          placeholder={isAr ? "رابط صورة الإيصال (https://...)" : "Receipt image URL (https://...)"}
+                          value={receiptUrl}
+                          onChange={e => setReceiptUrl(e.target.value)}
+                          style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font }}
+                        />
+                        <button
+                          onClick={handleReceiptUpload}
+                          disabled={receiptLoading || !receiptUrl.trim()}
+                          style={{ padding: "9px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: receiptLoading || !receiptUrl.trim() ? "not-allowed" : "pointer", fontFamily: font, opacity: receiptLoading || !receiptUrl.trim() ? 0.6 : 1 }}
+                        >
+                          {receiptLoading ? "..." : (isAr ? "رفع" : "Submit")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {info.payment.status === "confirmed" && (
                   <div style={{ marginTop: 10, fontSize: 14, fontWeight: 700, color: "#059669" }}>
                     {isAr ? "🎉 تم قبولك نهائياً في الجامعة!" : "🎉 You are now fully accepted!"}

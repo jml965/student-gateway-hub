@@ -908,6 +908,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
                 { key: "bankBranch", label: isAr ? "الفرع" : "Branch", type: "text" },
                 { key: "bankInstructionsAr", label: isAr ? "تعليمات الدفع (عربي)" : "Payment Instructions (AR)", type: "textarea" },
                 { key: "bankInstructionsEn", label: isAr ? "تعليمات الدفع (إنجليزي)" : "Payment Instructions (EN)", type: "textarea" },
+                { key: "stripeAccountId", label: isAr ? "معرّف حساب Stripe (اختياري للـ Connect)" : "Stripe Account ID (optional, for Connect)", type: "text" },
               ].map(f => (
                 <div key={f.key} style={{ marginBottom: 14 }}>
                   <label style={{ fontSize: 12, color: textMuted, display: "block", marginBottom: 5 }}>{f.label}</label>
@@ -1055,6 +1056,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
                               bankBranch: (uni as any).bankBranch || "",
                               bankInstructionsAr: (uni as any).bankInstructionsAr || "",
                               bankInstructionsEn: (uni as any).bankInstructionsEn || "",
+                              stripeAccountId: (uni as any).stripeAccountId || "",
                             });
                             setPaySettingsModal(uni.id);
                           }} style={{ background: isDark ? "#1e293b" : "#f1f5f9", color: "#2563eb", border: `1px solid #2563eb44`, borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: font }}>

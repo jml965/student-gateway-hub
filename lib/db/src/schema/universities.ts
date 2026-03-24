@@ -25,6 +25,7 @@ export const universitiesTable = pgTable("universities", {
   bankBranch: text("bank_branch"),
   bankInstructionsAr: text("bank_instructions_ar"),
   bankInstructionsEn: text("bank_instructions_en"),
+  stripeAccountId: text("stripe_account_id"),
   status: universityStatusEnum("status").notNull().default("active"),
   approvedBy: integer("approved_by"),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
