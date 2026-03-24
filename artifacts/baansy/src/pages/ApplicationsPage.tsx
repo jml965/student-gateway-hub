@@ -8,20 +8,23 @@ type Theme = "light" | "dark";
 
 interface Props { lang: Lang; theme: Theme; navigate: (p: string) => void; }
 
-const STATUS_CONFIG: Record<string, { ar: string; en: string; color: string; step: number }> = {
+interface StatusConfig { ar: string; en: string; color: string; step: number }
+
+const STATUS_CONFIG: Record<string, StatusConfig> = {
   draft:                { ar: "مسودة", en: "Draft", color: "#94a3b8", step: 0 },
   submitted:            { ar: "مقدَّم", en: "Submitted", color: "#3b82f6", step: 1 },
   documents_pending:    { ar: "وثائق ناقصة", en: "Docs Needed", color: "#f59e0b", step: 1 },
   under_review:         { ar: "قيد المراجعة", en: "Under Review", color: "#8b5cf6", step: 2 },
-  preliminary_accepted: { ar: "قبول مبدئي", en: "Pre-Accepted", color: "#0ea5e9", step: 3 },
-  accepted:             { ar: "مقبول", en: "Accepted", color: "#10b981", step: 5 },
+  sent_to_university:   { ar: "تم الإرسال للجامعة", en: "Sent to University", color: "#0891b2", step: 3 },
+  preliminary_accepted: { ar: "قبول مبدئي", en: "Pre-Accepted", color: "#0ea5e9", step: 4 },
+  accepted:             { ar: "مقبول", en: "Accepted", color: "#10b981", step: 6 },
   rejected:             { ar: "مرفوض", en: "Rejected", color: "#ef4444", step: -1 },
   withdrawn:            { ar: "مسحوب", en: "Withdrawn", color: "#64748b", step: -1 },
 };
 
 const STEPS = {
-  ar: ["الوثائق", "المراجعة", "الجامعة", "قبول مبدئي", "الدفع", "قبول نهائي"],
-  en: ["Documents", "Review", "University", "Pre-Accepted", "Payment", "Accepted"],
+  ar: ["الوثائق", "المراجعة", "إرسال للجامعة", "قبول مبدئي", "الدفع", "قبول نهائي"],
+  en: ["Documents", "Review", "Sent to Uni", "Pre-Accepted", "Payment", "Accepted"],
 };
 
 interface AppRecord {
@@ -367,7 +370,7 @@ export default function ApplicationsPage({ lang, theme, navigate }: Props) {
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                           {selectedApp.events.map((ev, i) => {
-                            const evCfg = STATUS_CONFIG[ev.toStatus] ?? { color: "#94a3b8", en: ev.toStatus, ar: ev.toStatus };
+                            const evCfg: StatusConfig = STATUS_CONFIG[ev.toStatus] ?? { color: "#94a3b8", en: ev.toStatus, ar: ev.toStatus, step: 0 };
                             return (
                               <div key={ev.id} style={{ position: "relative", paddingInlineStart: 22 }}>
                                 <div style={{ position: "absolute", insetInlineStart: 0, top: 4, width: 12, height: 12, borderRadius: "50%", background: evCfg.color }} />
@@ -375,7 +378,7 @@ export default function ApplicationsPage({ lang, theme, navigate }: Props) {
                                   <div style={{ position: "absolute", insetInlineStart: 5, top: 18, bottom: -10, width: 2, background: border }} />
                                 )}
                                 <div style={{ fontSize: 12, fontWeight: 700, color: evCfg.color }}>
-                                  {isAr ? (evCfg as any).ar : (evCfg as any).en}
+                                  {isAr ? evCfg.ar : evCfg.en}
                                 </div>
                                 {ev.notes && <div style={{ fontSize: 11, color: textMuted, marginTop: 2, fontStyle: "italic" }}>{ev.notes}</div>}
                                 <div style={{ fontSize: 10, color: textMuted, marginTop: 2 }}>{new Date(ev.createdAt).toLocaleString()}</div>

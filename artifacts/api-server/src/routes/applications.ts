@@ -152,16 +152,37 @@ router.post("/:id/submit", async (req: AuthRequest, res) => {
     return;
   }
 
-  // Check if student has at least one document
-  const docs = await db
-    .select({ id: documentsTable.id })
-    .from(documentsTable)
-    .where(eq(documentsTable.userId, userId))
+  // Load spec requirements + student docs to validate completeness
+  const [spec] = await db
+    .select({ requirementsJson: specializationsTable.requirementsJson })
+    .from(specializationsTable)
+    .where(eq(specializationsTable.id, app.specializationId))
     .limit(1);
+
+  const docs = await db
+    .select({ id: documentsTable.id, type: documentsTable.type })
+    .from(documentsTable)
+    .where(eq(documentsTable.userId, userId));
 
   if (docs.length === 0) {
     res.status(400).json({ error: "no_documents", message: "Please upload at least one document before submitting" });
     return;
+  }
+
+  // If specialization lists required document types, verify each is present
+  const reqs = spec?.requirementsJson as Record<string, unknown> | null;
+  const requiredDocTypes = Array.isArray(reqs?.requiredDocuments) ? reqs!.requiredDocuments as string[] : null;
+  if (requiredDocTypes && requiredDocTypes.length > 0) {
+    const uploadedTypes = new Set(docs.map(d => d.type));
+    const missing = requiredDocTypes.filter(t => !uploadedTypes.has(t));
+    if (missing.length > 0) {
+      res.status(400).json({
+        error: "missing_documents",
+        message: `Missing required document types: ${missing.join(", ")}`,
+        missing,
+      });
+      return;
+    }
   }
 
   const [updated] = await db

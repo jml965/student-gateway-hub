@@ -344,7 +344,7 @@ router.patch("/applications/:id/status", async (req: AuthRequest, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "invalid_id" }); return; }
 
-  const validStatuses = ["draft", "submitted", "documents_pending", "under_review", "preliminary_accepted", "accepted", "rejected", "withdrawn"] as const;
+  const validStatuses = ["draft", "submitted", "documents_pending", "under_review", "sent_to_university", "preliminary_accepted", "accepted", "rejected", "withdrawn"] as const;
   const { status, notes } = req.body as { status?: string; notes?: string };
   if (!status || !validStatuses.includes(status as typeof validStatuses[number])) {
     res.status(400).json({ error: "invalid_status" });
@@ -397,6 +397,7 @@ router.patch("/applications/:id/status", async (req: AuthRequest, res) => {
     submitted: { ar: "مقدَّم", en: "Submitted" },
     documents_pending: { ar: "وثائق ناقصة", en: "Documents Pending" },
     under_review: { ar: "قيد المراجعة", en: "Under Review" },
+    sent_to_university: { ar: "تم الإرسال للجامعة", en: "Sent to University" },
     preliminary_accepted: { ar: "قبول مبدئي", en: "Preliminary Accepted" },
     accepted: { ar: "مقبول", en: "Accepted" },
     rejected: { ar: "مرفوض", en: "Rejected" },
