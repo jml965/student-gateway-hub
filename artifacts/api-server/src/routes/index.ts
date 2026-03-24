@@ -10,6 +10,7 @@ import universityPortalRouter from "./university-portal";
 import applicationsRouter from "./applications";
 import notificationsRouter from "./notifications";
 import paymentsRouter from "./payments";
+import servicesRouter from "./services";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/university-portal", universityPortalRouter);
 router.use("/applications", applicationsRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/payments", paymentsRouter);
+router.use("/services", servicesRouter);
 
 export default router;

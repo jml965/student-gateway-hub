@@ -4,8 +4,9 @@ import { api, streamChat } from "@/lib/api";
 import {
   GraduationCap, Home as HomeIco, Heart, Plane, FileText, CreditCard, IdCard,
   MsgPlus, Moon, Sun, Globe, PanClose, PanOpen, Send, MoreH, Gear, LogOut,
-  LogIn, UserPlus, UserIco, Gift, Sparkles, ChevR, Menu, X
+  LogIn, UserPlus, UserIco, Gift, Sparkles, ChevR, Menu, X, Wifi
 } from "@/components/icons";
+import ServiceCard, { parseMessageParts } from "@/components/ServiceCard";
 
 type Lang = "ar" | "en";
 type Theme = "light" | "dark";
@@ -18,6 +19,7 @@ const svcs = {
     { icon: Plane, label: "استقبال من المطار", desc: "خدمة النقل وحجز التذاكر" },
     { icon: FileText, label: "تجهيز الفيزا", desc: "مساعدة كاملة في ملف الفيزا" },
     { icon: IdCard, label: "البطاقة الطلابية الدولية", desc: "خصومات حصرية حول العالم" },
+    { icon: Wifi, label: "الإنترنت الدولي", desc: "شرائح SIM في 150+ دولة" },
     { icon: CreditCard, label: "كارت فيزا / ماستركارد", desc: "بطاقة مسبقة الدفع للطلاب" },
   ],
   en: [
@@ -27,6 +29,7 @@ const svcs = {
     { icon: Plane, label: "Airport Pickup", desc: "Transfer services & ticket booking" },
     { icon: FileText, label: "Visa Assistance", desc: "Complete help with student visa files" },
     { icon: IdCard, label: "International Student Card", desc: "Exclusive discounts worldwide" },
+    { icon: Wifi, label: "International Internet", desc: "SIM cards in 150+ countries" },
     { icon: CreditCard, label: "Visa / Mastercard", desc: "Prepaid card for students" },
   ],
 };
@@ -215,18 +218,32 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  const serviceMessages: Record<string, string> = {
+    "السكن الطلابي": "أريد الاستفسار عن خيارات السكن الطلابي المتاحة",
+    "Student Housing": "I'd like to learn about student housing options",
+    "التأمين الصحي": "ما هي خيارات التأمين الصحي المتاحة للطلاب؟",
+    "Health Insurance": "What health insurance options are available for students?",
+    "استقبال من المطار": "أريد حجز خدمة استقبال من المطار",
+    "Airport Pickup": "I'd like to book an airport pickup service",
+    "تجهيز الفيزا": "أحتاج مساعدة في متطلبات التأشيرة الدراسية",
+    "Visa Assistance": "I need help with student visa requirements",
+    "البطاقة الطلابية الدولية": "ما هي مميزات البطاقة الطلابية الدولية ISIC؟",
+    "International Student Card": "What are the benefits of the ISIC international student card?",
+    "كارت فيزا / ماستركارد": "أريد الاستفسار عن بطاقة Visa/Mastercard مسبقة الدفع للطلاب",
+    "Visa / Mastercard": "I'd like to request a prepaid Visa/Mastercard for students",
+    "الإنترنت الدولي": "ما هي خيارات الإنترنت والشرائح الدولية للطلاب في الخارج؟",
+    "International Internet": "What are the international internet and SIM card options for students abroad?",
+  };
+
   const handleServiceClick = (svc: any) => {
     const label: string = svc.label;
     if (label === "تسجيل الجامعات" || label === "University Registration") {
       navigate("universities");
       return;
     }
-    if (label === "تجهيز الفيزا" || label === "Visa Assistance") {
-      if (!user) { navigate("login"); return; }
-      navigate("documents");
-      return;
-    }
-    setInputVal(label);
+    if (!user) { navigate("login"); return; }
+    const msg = serviceMessages[label] || label;
+    setInputVal(msg);
     inputRef.current?.focus();
   };
 
@@ -349,10 +366,30 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
                 <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, background: msg.role === "user" ? "linear-gradient(135deg,#1d4ed8,#60a5fa)" : isDark ? "#1e293b" : "#f0f4ff", border: msg.role === "assistant" ? `1px solid ${isDark ? "#334155" : "#c7d2fe"}` : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {msg.role === "user" ? <UserIco size={16} color="#fff" /> : <GraduationCap size={16} color={isDark ? "#93c5fd" : "#1d4ed8"} />}
                 </div>
-                <div style={{ flex: 1, backgroundColor: msg.role === "user" ? "#2563eb" : cardBg, border: msg.role === "assistant" ? `1px solid ${cardBorder}` : "none", borderRadius: 14, padding: "10px 14px", fontSize: 14, color: msg.role === "user" ? "#fff" : textMain, lineHeight: 1.7, fontFamily: tx.font, direction: tx.dir, textAlign: lang === "ar" ? "right" : "left", whiteSpace: "pre-wrap" }}>
-                  {msg.content || (msg.role === "assistant" && streaming ? <span style={{ opacity: .5 }}>{tx.thinking}</span> : null)}
-                  {msg.role === "assistant" && streaming && msg.content && (
-                    <span style={{ display: "inline-block", width: 2, height: 16, backgroundColor: accentBlue, marginInlineStart: 2, animation: "blink 1s infinite" }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {msg.role === "user" ? (
+                    <div style={{ backgroundColor: "#2563eb", borderRadius: 14, padding: "10px 14px", fontSize: 14, color: "#fff", lineHeight: 1.7, fontFamily: tx.font, direction: tx.dir, textAlign: lang === "ar" ? "right" : "left", whiteSpace: "pre-wrap" }}>
+                      {msg.content}
+                    </div>
+                  ) : (
+                    <div>
+                      {msg.content ? (
+                        parseMessageParts(msg.content).map((part, pi) =>
+                          part.type === "card" ? (
+                            <ServiceCard key={pi} type={part.value} lang={lang} theme={theme} />
+                          ) : (
+                            <div key={pi} style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 14, padding: "10px 14px", fontSize: 14, color: textMain, lineHeight: 1.7, fontFamily: tx.font, direction: tx.dir, textAlign: lang === "ar" ? "right" : "left", whiteSpace: "pre-wrap", marginBottom: 4 }}>
+                              {part.value}
+                            </div>
+                          )
+                        )
+                      ) : (
+                        streaming && <div style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 14, padding: "10px 14px", fontSize: 14, color: textMain, fontFamily: tx.font }}><span style={{ opacity: .5 }}>{tx.thinking}</span></div>
+                      )}
+                      {msg.role === "assistant" && streaming && msg.content && (
+                        <span style={{ display: "inline-block", width: 2, height: 16, backgroundColor: accentBlue, marginInlineStart: 2, animation: "blink 1s infinite", verticalAlign: "middle" }} />
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

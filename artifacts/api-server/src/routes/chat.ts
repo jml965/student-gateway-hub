@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, chatSessionsTable, chatMessagesTable, aiSettingsTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../lib/middleware";
+import { VISA_DATA } from "../lib/visa-data";
 
 const router = Router();
 
@@ -51,6 +52,62 @@ router.get("/sessions/:sessionId/messages", async (req: AuthRequest, res) => {
   res.json(messages);
 });
 
+function buildSystemPrompt(basePrompt: string): string {
+  const visaSummary = VISA_DATA.map(v => {
+    const docs = v.documentsAr.join("، ");
+    return `- ${v.nameAr} (${v.code}): معالجة ${v.processingDays} يوم، رسوم ${v.feesUSD}$، الوثائق: ${docs}. ${v.notesAr}`;
+  }).join("\n");
+
+  return `${basePrompt}
+
+## خدمات بنصي المتاحة للطلاب
+
+أنت مساعد منصة Baansy للتسجيل الجامعي الذكي. تساعد الطلاب الدوليين في:
+1. اختيار الجامعة والتخصص المناسب
+2. فهم متطلبات التأشيرة
+3. الحصول على خدمات الطلاب المتكاملة
+
+### خدمات الطالب المتاحة:
+
+**السكن الطلابي (housing)**: نوفر سكناً قريباً من الجامعات عبر شركائنا. شقق مفروشة وغرف طلابية في أكثر من 50 مدينة. أسعار تبدأ من 150$ شهرياً.
+
+**التأمين الصحي (insurance)**: تأمين طبي شامل للطلاب الدوليين. خطط من 30$ إلى 150$ شهرياً تشمل: طوارئ، عيادات خارجية، أسنان. متوفر في 40+ دولة.
+
+**حجز السفر (travel)**: أرخص أسعار الطيران عبر شركائنا. توفير تأشيرات السفر المتعددة. خصومات طلابية حصرية تصل 30%.
+
+**استقبال المطار (airport_pickup)**: خدمة استقبال شخصي في المطار ونقل آمن إلى مقر إقامتك. متوفرة في 80+ مطار عالمي. رسوم تبدأ من 30$.
+
+**البطاقة الطلابية الدولية ISIC (student_card)**: أكثر من 150,000 خصم حول العالم في المطاعم والمتاحف والمواصلات. السعر: 20$/سنة.
+
+**شرائح الإنترنت الدولية (internet)**: شرائح SIM دولية أو esim تعمل في 150+ دولة بدون تغيير رقمك. من 15$/شهر.
+
+**بطاقة Visa/Mastercard مسبقة الدفع (prepaid_card)**: بطاقة بنكية دولية مسبقة الدفع للطلاب. يمكن تعبئتها من IBAN أو من رصيد حسابك. مثالية للنفقات الدراسية في الخارج.
+
+---
+## متطلبات التأشيرة للدراسة في الخارج (30 دولة رئيسية)
+
+${visaSummary}
+
+---
+## تعليمات مهمة حول بطاقات الخدمة
+
+عندما يسأل الطالب عن خدمة معينة أو تحتاج إلى عرض تفاصيل خدمة، اكتب رمز البطاقة في نهاية ردك هكذا:
+[CARD:housing] — للسكن الطلابي
+[CARD:insurance] — للتأمين الصحي
+[CARD:travel] — لحجز السفر
+[CARD:airport_pickup] — لاستقبال المطار
+[CARD:student_card] — للبطاقة الطلابية الدولية ISIC
+[CARD:internet] — لشرائح الإنترنت الدولية
+[CARD:prepaid_card] — لبطاقة Visa/Mastercard مسبقة الدفع
+
+مثال: إذا سأل الطالب "أريد سكناً قريباً من جامعتي" فاشرح له الخدمة ثم ضع [CARD:housing] في نهاية ردك.
+
+إذا سأل عن التأشيرة لدولة معينة، اشرح متطلباتها من القائمة أعلاه بشكل واضح.
+
+قاعدة مهمة: ضع رمز البطاقة مرة واحدة فقط في نهاية الرد عند الحاجة. لا تضعه في وسط الجملة.
+`;
+}
+
 router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
   const sessionId = parseInt(req.params.sessionId, 10);
   const { content } = req.body;
@@ -83,7 +140,7 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
     systemPrompt:
       "أنت مساعد Baansy الذكي. تساعد الطلاب في التسجيل الجامعي. ردودك قصيرة وبشرية وواضحة.",
     temperature: 0.7,
-    maxTokens: 500,
+    maxTokens: 800,
     typingSpeedMs: 20,
   };
 
@@ -106,8 +163,10 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
     .where(eq(chatMessagesTable.sessionId, sessionId))
     .orderBy(asc(chatMessagesTable.createdAt));
 
+  const enrichedSystemPrompt = buildSystemPrompt(aiSettings.systemPrompt);
+
   const messages = [
-    { role: "system" as const, content: aiSettings.systemPrompt },
+    { role: "system" as const, content: enrichedSystemPrompt },
     ...prevMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
   ];
 
@@ -122,7 +181,7 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
         model: aiSettings.model,
         messages,
         temperature: aiSettings.temperature,
-        max_tokens: aiSettings.maxTokens,
+        max_tokens: aiSettings.maxTokens ?? 800,
         stream: true,
       }),
     });
@@ -134,7 +193,7 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
         response.status === 429
           ? "تجاوزت حد الاستخدام. حاول مرة أخرى لاحقاً."
           : "خطأ في الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى.";
-      void errorText; // consumed for logging purposes only — not surfaced to client
+      void errorText;
       res.write(`data: ${JSON.stringify({ content: errMsg, done: true })}\n\n`);
       res.end();
       return;
