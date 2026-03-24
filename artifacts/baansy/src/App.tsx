@@ -6,8 +6,10 @@ import ReferralPage from "@/pages/ReferralPage";
 import AdminPage from "@/pages/AdminPage";
 import UniversityRegisterPage from "@/pages/UniversityRegisterPage";
 import UniversityPortalPage from "@/pages/UniversityPortalPage";
+import UniversitiesPage from "@/pages/UniversitiesPage";
+import DocumentsPage from "@/pages/DocumentsPage";
 
-type Page = "home" | "login" | "signup" | "forgot" | "reset-password" | "referral" | "admin" | "university-register" | "university-portal";
+type Page = "home" | "login" | "signup" | "forgot" | "reset-password" | "referral" | "admin" | "university-register" | "university-portal" | "universities" | "documents";
 type Lang = "ar" | "en";
 type Theme = "light" | "dark";
 
@@ -55,6 +57,8 @@ export default function App() {
         {page === "admin" && <AdminPage {...commonProps} />}
         {page === "university-register" && <UniversityRegisterPage {...commonProps} />}
         {page === "university-portal" && <UniversityPortalPage {...commonProps} />}
+        {page === "universities" && <UniversitiesPage {...commonProps} />}
+        {page === "documents" && <DocumentsPage {...commonProps} />}
       </div>
     </AuthProvider>
   );

@@ -83,7 +83,7 @@ const UNIVERSITIES = [
   { nameAr: "جامعة كالغاري", nameEn: "University of Calgary", country: "Canada", city: "Calgary", website: "https://www.ucalgary.ca" },
   { nameAr: "جامعة ماكماستر", nameEn: "McMaster University", country: "Canada", city: "Hamilton", website: "https://www.mcmaster.ca" },
   { nameAr: "جامعة أوتاوا", nameEn: "University of Ottawa", country: "Canada", city: "Ottawa", website: "https://www.uottawa.ca" },
-  { nameAr: "جامعة ويسترن أونتاريو", nameEen: "Western University", country: "Canada", city: "London", website: "https://www.uwo.ca" },
+  { nameAr: "جامعة ويسترن أونتاريو", nameEn: "Western University", country: "Canada", city: "London", website: "https://www.uwo.ca" },
   { nameAr: "جامعة دالهوزي", nameEn: "Dalhousie University", country: "Canada", city: "Halifax", website: "https://www.dal.ca" },
   { nameAr: "جامعة كوينز", nameEn: "Queen's University", country: "Canada", city: "Kingston", website: "https://www.queensu.ca" },
   { nameAr: "جامعة مانيتوبا", nameEn: "University of Manitoba", country: "Canada", city: "Winnipeg", website: "https://www.umanitoba.ca" },
@@ -124,6 +124,58 @@ const UNIVERSITIES = [
   { nameAr: "جامعة جورجتاون", nameEn: "Georgetown University", country: "USA", city: "Washington D.C.", website: "https://www.georgetown.edu" },
   { nameAr: "جامعة كاليفورنيا سان دييغو", nameEn: "UC San Diego", country: "USA", city: "San Diego", website: "https://www.ucsd.edu" },
   { nameAr: "جامعة نيويورك", nameEn: "New York University", country: "USA", city: "New York", website: "https://www.nyu.edu" },
+
+  // France (10)
+  { nameAr: "جامعة باريس-ساكلاي", nameEn: "University of Paris-Saclay", country: "France", city: "Paris", website: "https://www.universite-paris-saclay.fr" },
+  { nameAr: "مدرسة المناجم باريس", nameEn: "PSL University", country: "France", city: "Paris", website: "https://www.psl.eu" },
+  { nameAr: "جامعة سوربون", nameEn: "Sorbonne University", country: "France", city: "Paris", website: "https://www.sorbonne-universite.fr" },
+  { nameAr: "المدرسة البوليتكنيكية", nameEn: "École Polytechnique", country: "France", city: "Palaiseau", website: "https://www.polytechnique.edu" },
+  { nameAr: "جامعة ليون", nameEn: "University of Lyon", country: "France", city: "Lyon", website: "https://www.universite-lyon.fr" },
+  { nameAr: "جامعة بوردو", nameEn: "University of Bordeaux", country: "France", city: "Bordeaux", website: "https://www.u-bordeaux.fr" },
+  { nameAr: "جامعة ستراسبورغ", nameEn: "University of Strasbourg", country: "France", city: "Strasbourg", website: "https://www.unistra.fr" },
+  { nameAr: "جامعة مونبيليه", nameEn: "University of Montpellier", country: "France", city: "Montpellier", website: "https://www.umontpellier.fr" },
+  { nameAr: "جامعة غرونوبل ألب", nameEn: "Université Grenoble Alpes", country: "France", city: "Grenoble", website: "https://www.univ-grenoble-alpes.fr" },
+  { nameAr: "جامعة تولوز", nameEn: "University of Toulouse", country: "France", city: "Toulouse", website: "https://www.univ-toulouse.fr" },
+
+  // Netherlands (10)
+  { nameAr: "جامعة أمستردام", nameEn: "University of Amsterdam", country: "Netherlands", city: "Amsterdam", website: "https://www.uva.nl" },
+  { nameAr: "جامعة ديلفت التقنية", nameEn: "Delft University of Technology", country: "Netherlands", city: "Delft", website: "https://www.tudelft.nl" },
+  { nameAr: "جامعة يوتريخت", nameEn: "Utrecht University", country: "Netherlands", city: "Utrecht", website: "https://www.uu.nl" },
+  { nameAr: "جامعة غرونينغن", nameEn: "University of Groningen", country: "Netherlands", city: "Groningen", website: "https://www.rug.nl" },
+  { nameAr: "جامعة لايدن", nameEn: "Leiden University", country: "Netherlands", city: "Leiden", website: "https://www.universiteitleiden.nl" },
+  { nameAr: "جامعة آيندهوفن التقنية", nameEn: "Eindhoven University of Technology", country: "Netherlands", city: "Eindhoven", website: "https://www.tue.nl" },
+  { nameAr: "جامعة فاغينينغن", nameEn: "Wageningen University", country: "Netherlands", city: "Wageningen", website: "https://www.wur.nl" },
+  { nameAr: "جامعة راتباود نايميخن", nameEn: "Radboud University", country: "Netherlands", city: "Nijmegen", website: "https://www.ru.nl" },
+  { nameAr: "جامعة فريفي أمستردام", nameEn: "Vrije Universiteit Amsterdam", country: "Netherlands", city: "Amsterdam", website: "https://www.vu.nl" },
+  { nameAr: "جامعة تيلبرغ", nameEn: "Tilburg University", country: "Netherlands", city: "Tilburg", website: "https://www.tilburguniversity.edu" },
+
+  // Poland (5)
+  { nameAr: "جامعة وارسو", nameEn: "University of Warsaw", country: "Poland", city: "Warsaw", website: "https://www.uw.edu.pl" },
+  { nameAr: "جامعة جاغيلونيان", nameEn: "Jagiellonian University", country: "Poland", city: "Krakow", website: "https://www.uj.edu.pl" },
+  { nameAr: "جامعة وارسو للتكنولوجيا", nameEn: "Warsaw University of Technology", country: "Poland", city: "Warsaw", website: "https://www.pw.edu.pl" },
+  { nameAr: "جامعة بوزنان آدم ميكيفيتش", nameEn: "Adam Mickiewicz University", country: "Poland", city: "Poznan", website: "https://www.amu.edu.pl" },
+  { nameAr: "الجامعة الطبية في وارسو", nameEn: "Medical University of Warsaw", country: "Poland", city: "Warsaw", website: "https://www.wum.edu.pl" },
+
+  // Hungary (5)
+  { nameAr: "جامعة بودابست للتكنولوجيا", nameEn: "Budapest University of Technology", country: "Hungary", city: "Budapest", website: "https://www.bme.hu" },
+  { nameAr: "جامعة لورند إيوتفوش", nameEn: "Eötvös Loránd University", country: "Hungary", city: "Budapest", website: "https://www.elte.hu" },
+  { nameAr: "جامعة سيميلفيس الطبية", nameEn: "Semmelweis University", country: "Hungary", city: "Budapest", website: "https://www.semmelweis.hu" },
+  { nameAr: "جامعة بيكس", nameEn: "University of Pécs", country: "Hungary", city: "Pécs", website: "https://www.pte.hu" },
+  { nameAr: "جامعة ديبريتسن", nameEn: "University of Debrecen", country: "Hungary", city: "Debrecen", website: "https://www.unideb.hu" },
+
+  // Czech Republic (5)
+  { nameAr: "جامعة براغ كارلوف", nameEn: "Charles University Prague", country: "Czech Republic", city: "Prague", website: "https://www.cuni.cz" },
+  { nameAr: "جامعة براغ للتكنولوجيا CTU", nameEn: "Czech Technical University in Prague", country: "Czech Republic", city: "Prague", website: "https://www.cvut.cz" },
+  { nameAr: "جامعة برنو ماساريك", nameEn: "Masaryk University", country: "Czech Republic", city: "Brno", website: "https://www.muni.cz" },
+  { nameAr: "الجامعة التقنية العليا في برنو", nameEn: "Brno University of Technology", country: "Czech Republic", city: "Brno", website: "https://www.vut.cz" },
+  { nameAr: "جامعة أولوموتس بالاتسكي", nameEn: "Palacký University Olomouc", country: "Czech Republic", city: "Olomouc", website: "https://www.upol.cz" },
+
+  // New Zealand (5)
+  { nameAr: "جامعة أوكلاند", nameEn: "University of Auckland", country: "New Zealand", city: "Auckland", website: "https://www.auckland.ac.nz" },
+  { nameAr: "جامعة أوتاغو", nameEn: "University of Otago", country: "New Zealand", city: "Dunedin", website: "https://www.otago.ac.nz" },
+  { nameAr: "جامعة كانتربري", nameEn: "University of Canterbury", country: "New Zealand", city: "Christchurch", website: "https://www.canterbury.ac.nz" },
+  { nameAr: "جامعة ماسي", nameEn: "Massey University", country: "New Zealand", city: "Palmerston North", website: "https://www.massey.ac.nz" },
+  { nameAr: "جامعة فيكتوريا ويلينغتون", nameEn: "Victoria University of Wellington", country: "New Zealand", city: "Wellington", website: "https://www.victoria.ac.nz" },
 ] as const;
 
 type UniversityRow = {

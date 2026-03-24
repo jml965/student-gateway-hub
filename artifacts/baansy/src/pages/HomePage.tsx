@@ -44,6 +44,8 @@ const T = {
     settingsBtn: "الإعدادات", logoutBtn: "تسجيل الخروج",
     themeLight: "فاتح", themeDark: "داكن", colTip: "طي القائمة", expTip: "عرض القائمة",
     referralLink: "برنامج الإحالة",
+    universitiesLink: "استكشف الجامعات",
+    documentsLink: "وثائقي",
     stat1: "4,000+ جامعة خاصة", stat2: "15,000+ جامعة حكومية",
     assistantLabel: "مساعد Baansy الذكي",
     you: "أنت", thinking: "يفكر...",
@@ -62,6 +64,8 @@ const T = {
     settingsBtn: "Settings", logoutBtn: "Logout",
     themeLight: "Light", themeDark: "Dark", colTip: "Collapse sidebar", expTip: "Expand sidebar",
     referralLink: "Referral Program",
+    universitiesLink: "Explore Universities",
+    documentsLink: "My Documents",
     stat1: "4,000+ Private", stat2: "15,000+ Public",
     assistantLabel: "Baansy AI Assistant",
     you: "You", thinking: "Thinking...",
@@ -199,7 +203,17 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
   };
 
   const handleServiceClick = (svc: any) => {
-    setInputVal(svc.label);
+    const label: string = svc.label;
+    if (label === "تسجيل الجامعات" || label === "University Registration") {
+      navigate("universities");
+      return;
+    }
+    if (label === "تجهيز الفيزا" || label === "Visa Assistance") {
+      if (!user) { navigate("login"); return; }
+      navigate("documents");
+      return;
+    }
+    setInputVal(label);
     inputRef.current?.focus();
   };
 
@@ -223,6 +237,14 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
         ))}
       </div>
       <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 8, paddingTop: 12, borderTop: `1px solid ${sidebarBorder}` }}>
+        <button onClick={() => navigate("universities")} style={{ backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "9px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, fontFamily: tx.font, whiteSpace: "nowrap" }}>
+          <GraduationCap size={14} />{tx.universitiesLink}
+        </button>
+        {user && (
+          <button onClick={() => navigate("documents")} style={{ backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "9px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, fontFamily: tx.font, whiteSpace: "nowrap" }}>
+            <FileText size={14} />{tx.documentsLink}
+          </button>
+        )}
         <button onClick={() => navigate("referral")} style={{ backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "9px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, fontFamily: tx.font, whiteSpace: "nowrap" }}>
           <Gift size={14} />{tx.referralLink}
         </button>
