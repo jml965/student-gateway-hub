@@ -11,6 +11,7 @@ import applicationsRouter from "./applications";
 import notificationsRouter from "./notifications";
 import paymentsRouter from "./payments";
 import servicesRouter from "./services";
+import referralsRouter from "./referrals";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use("/applications", applicationsRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/payments", paymentsRouter);
 router.use("/services", servicesRouter);
+router.use("/referrals", referralsRouter);
 
 export default router;

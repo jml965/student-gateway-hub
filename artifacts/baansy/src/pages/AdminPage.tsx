@@ -76,7 +76,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [localSettings, setLocalSettings] = useState<Partial<AiSettings>>({});
-  const [tab, setTab] = useState<"stats" | "ai" | "universities" | "students" | "applications" | "payments">("stats");
+  const [tab, setTab] = useState<"stats" | "ai" | "universities" | "students" | "applications" | "payments" | "referrers">("stats");
 
   // University CRM
   const [unis, setUnis] = useState<University[]>([]);
@@ -119,6 +119,24 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [confirmingPayId, setConfirmingPayId] = useState<number | null>(null);
   const [payNotes, setPayNotes] = useState("");
 
+  // Referrers CRM
+  interface ReferrerRecord { id: number; name: string; email: string; referralCode: string | null; createdAt: string; totalReferrals: number; totalCommission: string; totalPaid: string; totalUnpaid: string; }
+  interface ReferralRecord { id: number; commissionRate: string; commissionAmount: string | null; paymentStatus: string; paidAmount: string; notes: string | null; paidAt: string | null; createdAt: string; studentId: number | null; studentName: string | null; studentEmail: string | null; }
+  interface ReferralPaymentRecord { id: number; referralId: number; amount: string; paymentMethod: string; notes: string | null; paidAt: string; }
+  const [referrers, setReferrers] = useState<ReferrerRecord[]>([]);
+  const [referrersLoading, setReferrersLoading] = useState(false);
+  const [selectedReferrer, setSelectedReferrer] = useState<{ referrer: ReferrerRecord; referrals: ReferralRecord[]; payments: ReferralPaymentRecord[]; summary: { totalReferrals: number; totalCommission: string; totalPaid: string; totalUnpaid: string } } | null>(null);
+  const [referrerDetailLoading, setReferrerDetailLoading] = useState(false);
+  const [payCommissionModal, setPayCommissionModal] = useState<ReferralRecord | null>(null);
+  const [payCommissionAmount, setPayCommissionAmount] = useState("");
+  const [payCommissionMethod, setPayCommissionMethod] = useState("bank");
+  const [payCommissionNotes, setPayCommissionNotes] = useState("");
+  const [payCommissionSaving, setPayCommissionSaving] = useState(false);
+  const [editCommissionModal, setEditCommissionModal] = useState<ReferralRecord | null>(null);
+  const [editCommissionAmount, setEditCommissionAmount] = useState("");
+  const [editCommissionNotes, setEditCommissionNotes] = useState("");
+  const [editCommissionSaving, setEditCommissionSaving] = useState(false);
+
   // University payment settings modal
   const [paySettingsModal, setPaySettingsModal] = useState<number | null>(null);
   const [paySettingsForm, setPaySettingsForm] = useState<Record<string, string>>({});
@@ -160,6 +178,59 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   useEffect(() => {
     if (tab === "payments") loadPayments();
   }, [tab, payStatusFilter, payChannelFilter]);
+
+  useEffect(() => {
+    if (tab === "referrers") loadReferrers();
+  }, [tab]);
+
+  const loadReferrers = async () => {
+    setReferrersLoading(true);
+    try {
+      const res = await api.get<{ data: any[] }>("/referrals/admin/referrers?limit=50");
+      setReferrers(res.data);
+    } catch { } finally { setReferrersLoading(false); }
+  };
+
+  const loadReferrerDetail = async (id: number) => {
+    setReferrerDetailLoading(true);
+    try {
+      const res = await api.get<any>(`/referrals/admin/referrers/${id}`);
+      setSelectedReferrer(res);
+    } catch { } finally { setReferrerDetailLoading(false); }
+  };
+
+  const recordCommissionPayment = async () => {
+    if (!payCommissionModal || !selectedReferrer) return;
+    const amount = parseFloat(payCommissionAmount);
+    if (isNaN(amount) || amount <= 0) return;
+    setPayCommissionSaving(true);
+    try {
+      await api.post(`/referrals/admin/referrers/${selectedReferrer.referrer.id}/payments`, {
+        referralId: payCommissionModal.id,
+        amount,
+        paymentMethod: payCommissionMethod,
+        notes: payCommissionNotes || undefined,
+      });
+      setPayCommissionModal(null);
+      setPayCommissionAmount("");
+      setPayCommissionNotes("");
+      await loadReferrerDetail(selectedReferrer.referrer.id);
+      await loadReferrers();
+    } catch { } finally { setPayCommissionSaving(false); }
+  };
+
+  const saveCommissionEdit = async () => {
+    if (!editCommissionModal) return;
+    setEditCommissionSaving(true);
+    try {
+      await api.patch(`/referrals/admin/referrals/${editCommissionModal.id}`, {
+        commissionAmount: editCommissionAmount ? parseFloat(editCommissionAmount) : undefined,
+        notes: editCommissionNotes || undefined,
+      });
+      setEditCommissionModal(null);
+      if (selectedReferrer) await loadReferrerDetail(selectedReferrer.referrer.id);
+    } catch { } finally { setEditCommissionSaving(false); }
+  };
 
   const loadPayments = async () => {
     setPayLoading(true);
@@ -378,6 +449,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
             { id: "students", icon: Users, label: isAr ? "إدارة الطلاب" : "Students CRM" },
             { id: "applications", icon: ChevL, label: isAr ? "الطلبات" : "Applications" },
             { id: "payments", icon: Key, label: isAr ? "المدفوعات" : "Payments" },
+            { id: "referrers", icon: Users, label: isAr ? "المحيلون والعمولات" : "Referrers" },
             { id: "universities", icon: GraduationCap, label: isAr ? "الجامعات" : "Universities" },
             { id: "ai", icon: Gear, label: isAr ? "إعدادات الذكاء الاصطناعي" : "AI Settings" },
           ].map(t => (
@@ -1084,6 +1156,213 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ─── Referrers CRM ─── */}
+        {tab === "referrers" && (
+          <div style={{ display: "flex", gap: 20, height: "calc(100vh - 200px)" }}>
+            {/* Left pane: referrers list */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h2 style={{ fontSize: 17, fontWeight: 800, color: textMain, margin: 0 }}>{isAr ? "المحيلون" : "Referrers"}</h2>
+                <button onClick={loadReferrers} style={{ padding: "6px 14px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: font }}>
+                  {isAr ? "تحديث" : "Refresh"}
+                </button>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                {referrersLoading ? (
+                  <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
+                ) : referrers.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 60, background: cardBg, borderRadius: 14, color: textMuted }}>
+                    <div style={{ fontSize: 40, marginBottom: 8 }}>🤝</div>
+                    <p>{isAr ? "لا يوجد محيلون بعد" : "No referrers yet"}</p>
+                  </div>
+                ) : referrers.map(r => {
+                  const isSelected = selectedReferrer?.referrer.id === r.id;
+                  const unpaid = parseFloat(r.totalUnpaid);
+                  return (
+                    <div key={r.id} onClick={() => { setSelectedReferrer(null); loadReferrerDetail(r.id); }}
+                      style={{ background: isSelected ? (isDark ? "#1e3a8a" : "#dbeafe") : cardBg, border: `1px solid ${isSelected ? "#2563eb" : border}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", transition: "background 0.15s" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: textMain }}>{r.name}</div>
+                          <div style={{ fontSize: 12, color: textMuted, marginTop: 2 }}>{r.email}</div>
+                          {r.referralCode && (
+                            <div style={{ fontSize: 11, color: "#2563eb", fontWeight: 600, marginTop: 4, fontFamily: "monospace" }}>🔗 {r.referralCode}</div>
+                          )}
+                        </div>
+                        <div style={{ textAlign: isAr ? "left" : "right" }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#2563eb" }}>{r.totalReferrals} {isAr ? "إحالة" : "referrals"}</div>
+                          <div style={{ fontSize: 11, color: "#16a34a", marginTop: 2 }}>✅ {r.totalPaid}</div>
+                          {unpaid > 0 && <div style={{ fontSize: 11, color: "#dc2626", marginTop: 1 }}>⏳ {r.totalUnpaid}</div>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right pane: referrer detail */}
+            {(referrerDetailLoading || selectedReferrer) && (
+              <div style={{ width: 450, background: cardBg, border: `1px solid ${border}`, borderRadius: 16, padding: 20, overflowY: "auto", flexShrink: 0 }}>
+                {referrerDetailLoading ? (
+                  <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
+                ) : selectedReferrer && (
+                  <>
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontWeight: 800, fontSize: 16, color: textMain }}>{selectedReferrer.referrer.name}</div>
+                      <div style={{ fontSize: 12, color: textMuted }}>{selectedReferrer.referrer.email}</div>
+                      {selectedReferrer.referrer.referralCode && (
+                        <div style={{ fontSize: 12, color: "#2563eb", fontWeight: 600, marginTop: 4, fontFamily: "monospace" }}>🔗 {selectedReferrer.referrer.referralCode}</div>
+                      )}
+                    </div>
+
+                    {/* Summary */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+                      {[
+                        { label: isAr ? "إجمالي الإحالات" : "Total Referrals", value: selectedReferrer.summary.totalReferrals, color: "#2563eb" },
+                        { label: isAr ? "إجمالي العمولات" : "Total Commission", value: selectedReferrer.summary.totalCommission, color: "#7c3aed" },
+                        { label: isAr ? "المحصّل" : "Paid", value: selectedReferrer.summary.totalPaid, color: "#16a34a" },
+                        { label: isAr ? "المتبقي" : "Remaining", value: selectedReferrer.summary.totalUnpaid, color: "#dc2626" },
+                      ].map((s, i) => (
+                        <div key={i} style={{ background: isDark ? "#0f172a" : "#f8faff", border: `1px solid ${border}`, borderRadius: 10, padding: "12px 14px" }}>
+                          <div style={{ fontSize: 11, color: textMuted, marginBottom: 4 }}>{s.label}</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: s.color }}>{s.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Referrals list */}
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: textMain, marginBottom: 8 }}>{isAr ? "الإحالات" : "Referrals"}</div>
+                      {selectedReferrer.referrals.length === 0 ? (
+                        <div style={{ fontSize: 12, color: textMuted, textAlign: "center", padding: 16 }}>{isAr ? "لا توجد إحالات" : "No referrals yet"}</div>
+                      ) : selectedReferrer.referrals.map(ref => {
+                        const statusColor = ref.paymentStatus === "paid" ? "#16a34a" : ref.paymentStatus === "partial" ? "#d97706" : "#ef4444";
+                        const statusLabel = ref.paymentStatus === "paid" ? (isAr ? "مدفوعة" : "Paid") : ref.paymentStatus === "partial" ? (isAr ? "جزئي" : "Partial") : (isAr ? "غير مدفوعة" : "Unpaid");
+                        return (
+                          <div key={ref.id} style={{ background: isDark ? "#0f172a" : "#f8faff", border: `1px solid ${border}`, borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: 13, color: textMain }}>{ref.studentName || (isAr ? "طالب محذوف" : "Deleted student")}</div>
+                                {ref.studentEmail && <div style={{ fontSize: 11, color: textMuted }}>{ref.studentEmail}</div>}
+                              </div>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: statusColor, background: statusColor + "20", padding: "2px 8px", borderRadius: 20 }}>{statusLabel}</span>
+                            </div>
+                            <div style={{ display: "flex", gap: 12, fontSize: 11, color: textMuted, marginBottom: 8 }}>
+                              <span>{isAr ? "نسبة:" : "Rate:"} {ref.commissionRate}%</span>
+                              <span>{isAr ? "العمولة:" : "Commission:"} {ref.commissionAmount ?? "—"}</span>
+                              <span>{isAr ? "المدفوع:" : "Paid:"} {ref.paidAmount}</span>
+                            </div>
+                            {ref.notes && <div style={{ fontSize: 11, color: textMuted, marginBottom: 8, fontStyle: "italic" }}>{ref.notes}</div>}
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button onClick={() => { setEditCommissionModal(ref); setEditCommissionAmount(ref.commissionAmount || ""); setEditCommissionNotes(ref.notes || ""); }}
+                                style={{ padding: "5px 12px", background: isDark ? "#1e293b" : "#e2e8f0", color: textMain, border: "none", borderRadius: 7, cursor: "pointer", fontSize: 11, fontFamily: font }}>
+                                ✏️ {isAr ? "تعديل" : "Edit"}
+                              </button>
+                              {ref.paymentStatus !== "paid" && ref.commissionAmount && (
+                                <button onClick={() => { setPayCommissionModal(ref); setPayCommissionAmount(""); setPayCommissionNotes(""); }}
+                                  style={{ padding: "5px 12px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 7, cursor: "pointer", fontSize: 11, fontFamily: font }}>
+                                  💰 {isAr ? "تسجيل دفعة" : "Record Payment"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Payment history */}
+                    {selectedReferrer.payments.length > 0 && (
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: textMain, marginBottom: 8 }}>{isAr ? "سجل الدفعات" : "Payment History"}</div>
+                        {selectedReferrer.payments.map(p => (
+                          <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: isDark ? "#0f172a" : "#f0fdf4", border: `1px solid #bbf7d0`, borderRadius: 8, marginBottom: 6 }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: "#16a34a" }}>+{p.amount}</div>
+                              <div style={{ fontSize: 11, color: textMuted }}>{p.paymentMethod} · {new Date(p.paidAt).toLocaleDateString()}</div>
+                            </div>
+                            {p.notes && <div style={{ fontSize: 11, color: textMuted, fontStyle: "italic" }}>{p.notes}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Modal: record commission payment */}
+        {payCommissionModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 16, padding: 28, width: 400, fontFamily: font }}>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: textMain, marginBottom: 6 }}>{isAr ? "تسجيل دفعة عمولة" : "Record Commission Payment"}</h3>
+              <div style={{ fontSize: 13, color: textMuted, marginBottom: 18 }}>
+                {isAr ? "للطالب:" : "For student:"} {payCommissionModal.studentName || "—"} · {isAr ? "العمولة الكلية:" : "Total:"} {payCommissionModal.commissionAmount} · {isAr ? "المدفوع:" : "Paid:"} {payCommissionModal.paidAmount}
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: textMuted, display: "block", marginBottom: 4 }}>{isAr ? "المبلغ" : "Amount"}</label>
+                <input type="number" min="0.01" step="0.01" value={payCommissionAmount} onChange={e => setPayCommissionAmount(e.target.value)}
+                  style={{ ...inputStyle, width: "100%" }} placeholder={isAr ? "0.00" : "0.00"} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: textMuted, display: "block", marginBottom: 4 }}>{isAr ? "طريقة الدفع" : "Payment Method"}</label>
+                <select value={payCommissionMethod} onChange={e => setPayCommissionMethod(e.target.value)} style={{ ...inputStyle, width: "100%" }}>
+                  <option value="bank">{isAr ? "تحويل بنكي" : "Bank Transfer"}</option>
+                  <option value="cash">{isAr ? "نقداً" : "Cash"}</option>
+                  <option value="wallet">{isAr ? "محفظة إلكترونية" : "E-Wallet"}</option>
+                  <option value="other">{isAr ? "أخرى" : "Other"}</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: textMuted, display: "block", marginBottom: 4 }}>{isAr ? "ملاحظات" : "Notes"}</label>
+                <input value={payCommissionNotes} onChange={e => setPayCommissionNotes(e.target.value)}
+                  style={{ ...inputStyle, width: "100%" }} placeholder={isAr ? "اختياري..." : "Optional..."} />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={recordCommissionPayment} disabled={payCommissionSaving || !payCommissionAmount}
+                  style={{ flex: 1, padding: "10px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: font, fontWeight: 700, fontSize: 13 }}>
+                  {payCommissionSaving ? (isAr ? "جاري الحفظ..." : "Saving...") : (isAr ? "تسجيل الدفعة" : "Record Payment")}
+                </button>
+                <button onClick={() => setPayCommissionModal(null)}
+                  style={{ padding: "10px 16px", background: "none", border: `1px solid ${border}`, borderRadius: 10, cursor: "pointer", color: textMuted, fontFamily: font, fontSize: 13 }}>
+                  {isAr ? "إلغاء" : "Cancel"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: edit commission */}
+        {editCommissionModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 16, padding: 28, width: 380, fontFamily: font }}>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: textMain, marginBottom: 16 }}>{isAr ? "تعديل العمولة" : "Edit Commission"}</h3>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: textMuted, display: "block", marginBottom: 4 }}>{isAr ? "مبلغ العمولة" : "Commission Amount"}</label>
+                <input type="number" min="0" step="0.01" value={editCommissionAmount} onChange={e => setEditCommissionAmount(e.target.value)}
+                  style={{ ...inputStyle, width: "100%" }} placeholder="0.00" />
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: textMuted, display: "block", marginBottom: 4 }}>{isAr ? "ملاحظات" : "Notes"}</label>
+                <input value={editCommissionNotes} onChange={e => setEditCommissionNotes(e.target.value)}
+                  style={{ ...inputStyle, width: "100%" }} placeholder={isAr ? "اختياري..." : "Optional..."} />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={saveCommissionEdit} disabled={editCommissionSaving}
+                  style={{ flex: 1, padding: "10px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: font, fontWeight: 700, fontSize: 13 }}>
+                  {editCommissionSaving ? (isAr ? "جاري الحفظ..." : "Saving...") : (isAr ? "حفظ" : "Save")}
+                </button>
+                <button onClick={() => setEditCommissionModal(null)}
+                  style={{ padding: "10px 16px", background: "none", border: `1px solid ${border}`, borderRadius: 10, cursor: "pointer", color: textMuted, fontFamily: font, fontSize: 13 }}>
+                  {isAr ? "إلغاء" : "Cancel"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

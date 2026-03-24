@@ -170,6 +170,7 @@ export function SignupPage({ lang, theme, navigate }: { lang: Lang; theme: Theme
   const [pass, setPass] = useState(""); const [conf, setConf] = useState("");
   const [showP, setShowP] = useState(false); const [showC, setShowC] = useState(false);
   const [agreed, setAgreed] = useState(false); const [errs, setErrs] = useState<any>({}); const [load, setLoad] = useState(false); const [apiErr, setApiErr] = useState("");
+  const refCode = new URLSearchParams(window.location.search).get("ref") ?? "";
   const { register } = useAuth();
 
   const submit = async () => {
@@ -182,7 +183,7 @@ export function SignupPage({ lang, theme, navigate }: { lang: Lang; theme: Theme
     if (Object.keys(e).length) return;
     setLoad(true);
     try {
-      await register({ name, email, password: pass });
+      await register({ name, email, password: pass, referralCode: refCode || undefined });
       navigate("home");
     } catch (err: any) {
       setApiErr(err.message || "Registration failed");

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, passwordResetsTable } from "@workspace/db";
+import { db, usersTable, passwordResetsTable, referralsTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { hashPassword, comparePassword, signToken, generateResetToken } from "../lib/auth";
 import { sessionStore } from "../lib/session-store";
@@ -9,7 +9,7 @@ import { sendPasswordResetEmail } from "../lib/email";
 const router = Router();
 
 router.post("/register", async (req, res) => {
-  const { name, email, password, phone, country } = req.body;
+  const { name, email, password, phone, country, referralCode } = req.body;
 
   if (!name || !email || !password) {
     res.status(422).json({ error: "validation_error", message: "Name, email and password are required" });
@@ -45,6 +45,24 @@ router.post("/register", async (req, res) => {
       status: "active",
     })
     .returning();
+
+  // Link referral if code provided
+  if (referralCode) {
+    const [referrer] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.referralCode, referralCode.trim().toUpperCase()))
+      .limit(1);
+
+    if (referrer && referrer.id !== user.id) {
+      await db.insert(referralsTable).values({
+        referrerId: referrer.id,
+        referredStudentId: user.id,
+        code: referralCode.trim().toUpperCase(),
+        commissionRate: "10",
+      });
+    }
+  }
 
   const { token, expiresAt } = signToken({ userId: user.id, role: user.role });
   await sessionStore.store(user.id, token, expiresAt);

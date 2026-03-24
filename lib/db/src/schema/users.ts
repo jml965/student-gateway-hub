@@ -15,6 +15,7 @@ export const usersTable = pgTable("users", {
   role: userRoleEnum("role").notNull().default("student"),
   status: userStatusEnum("status").notNull().default("active"),
   universityId: integer("university_id"),
+  referralCode: text("referral_code").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
