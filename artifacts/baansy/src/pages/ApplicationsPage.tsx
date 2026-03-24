@@ -17,7 +17,7 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   under_review:         { ar: "قيد المراجعة", en: "Under Review", color: "#8b5cf6", step: 2 },
   sent_to_university:   { ar: "تم الإرسال للجامعة", en: "Sent to University", color: "#0891b2", step: 3 },
   preliminary_accepted: { ar: "قبول مبدئي", en: "Pre-Accepted", color: "#0ea5e9", step: 4 },
-  accepted:             { ar: "مقبول", en: "Accepted", color: "#10b981", step: 6 },
+  accepted:             { ar: "مقبول", en: "Accepted", color: "#10b981", step: 5 },
   rejected:             { ar: "مرفوض", en: "Rejected", color: "#ef4444", step: -1 },
   withdrawn:            { ar: "مسحوب", en: "Withdrawn", color: "#64748b", step: -1 },
 };
@@ -181,10 +181,10 @@ export default function ApplicationsPage({ lang, theme, navigate }: Props) {
         {isAr ? "الخطوة التالية: إتمام عملية الدفع لتأكيد القبول النهائي" : "Next step: Complete payment to confirm final acceptance"}
       </div>
       <button
-        onClick={() => navigate("home")}
+        onClick={() => navigate("payment")}
         style={{ background: "#10b981", color: "#fff", border: "none", padding: "14px 32px", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: font }}
       >
-        {isAr ? "تواصل مع المشرف →" : "Contact Advisor →"}
+        {isAr ? "متابعة للدفع →" : "Continue to Payment →"}
       </button>
     </div>
   );
@@ -355,7 +355,31 @@ export default function ApplicationsPage({ lang, theme, navigate }: Props) {
                   <>
                     {selectedApp.status === "preliminary_accepted" && <CongratulationsScreen app={selectedApp} />}
 
-                    {selectedApp.status !== "preliminary_accepted" && selectedApp.notes && (
+                    {selectedApp.status === "documents_pending" && (
+                      <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", marginBottom: 6 }}>
+                          {isAr ? "⚠️ مطلوب: رفع وثائق إضافية" : "⚠️ Action Required: Upload Documents"}
+                        </div>
+                        <div style={{ fontSize: 12, color: "#78350f", marginBottom: 12 }}>
+                          {isAr
+                            ? "يرجى رفع الوثائق المطلوبة لاستكمال طلبك."
+                            : "Please upload the required documents to continue your application."}
+                        </div>
+                        {selectedApp.notes && (
+                          <div style={{ fontSize: 12, color: "#92400e", marginBottom: 12, fontStyle: "italic" }}>
+                            {selectedApp.notes}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => navigate("documents")}
+                          style={{ background: "#f59e0b", color: "#fff", border: "none", padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: font }}
+                        >
+                          {isAr ? "رفع الوثائق →" : "Upload Documents →"}
+                        </button>
+                      </div>
+                    )}
+
+                    {selectedApp.status !== "preliminary_accepted" && selectedApp.status !== "documents_pending" && selectedApp.notes && (
                       <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 16, fontSize: 13, color: "#1d4ed8" }}>
                         <div style={{ fontWeight: 700, marginBottom: 4 }}>{isAr ? "ملاحظة المشرف" : "Advisor Note"}</div>
                         {selectedApp.notes}
