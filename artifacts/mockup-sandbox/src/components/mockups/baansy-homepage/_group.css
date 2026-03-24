@@ -1,0 +1,23 @@
+/* Arabic + Latin font support */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Baansy Brand Tokens */
+:root {
+  --baansy-blue-50: #eff6ff;
+  --baansy-blue-100: #dbeafe;
+  --baansy-blue-200: #bfdbfe;
+  --baansy-blue-300: #93c5fd;
+  --baansy-blue-400: #60a5fa;
+  --baansy-blue-500: #3b82f6;
+  --baansy-blue-600: #2563eb;
+  --baansy-blue-700: #1d4ed8;
+  --baansy-blue-800: #1e40af;
+  --baansy-blue-900: #1e3a8a;
+
+  --baansy-sidebar-light: #f0f4ff;
+  --baansy-sidebar-dark: #0f172a;
+  --baansy-chat-light: #ffffff;
+  --baansy-chat-dark: #0d1117;
+  --baansy-border-light: #e2e8f0;
+  --baansy-border-dark: #1e293b;
+}
