@@ -18,6 +18,13 @@ import {
   Building2,
   Building,
   Sparkles,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+  LogOut,
+  LogIn,
+  UserPlus,
+  User,
 } from "lucide-react";
 
 type Lang = "ar" | "en";
@@ -51,6 +58,15 @@ const t = {
     ],
     disclaimer: "قد يقدم Baansy AI معلومات غير دقيقة · إشعار الخصوصية",
     switchLang: "EN",
+    loginBtn: "تسجيل الدخول",
+    signupBtn: "إنشاء حساب",
+    settingsBtn: "الإعدادات",
+    logoutBtn: "تسجيل الخروج",
+    loggedInAs: "مرحباً، أحمد",
+    themeLight: "فاتح",
+    themeDark: "داكن",
+    collapseTip: "طي القائمة",
+    expandTip: "عرض القائمة",
   },
   en: {
     dir: "ltr" as const,
@@ -79,6 +95,15 @@ const t = {
     ],
     disclaimer: "Baansy AI may provide inaccurate information · Privacy Notice",
     switchLang: "عر",
+    loginBtn: "Login",
+    signupBtn: "Sign Up",
+    settingsBtn: "Settings",
+    logoutBtn: "Logout",
+    loggedInAs: "Hi, Ahmed",
+    themeLight: "Light",
+    themeDark: "Dark",
+    collapseTip: "Collapse sidebar",
+    expandTip: "Expand sidebar",
   },
 };
 
@@ -86,10 +111,13 @@ export function Homepage() {
   const [lang, setLang] = useState<Lang>("ar");
   const [theme, setTheme] = useState<Theme>("light");
   const [inputVal, setInputVal] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const tx = t[lang];
   const isDark = theme === "dark";
 
+  // Colors
   const bg = isDark ? "#0d1117" : "#f8faff";
   const sidebarBg = isDark ? "#0f172a" : "#eef2ff";
   const sidebarBorder = isDark ? "#1e293b" : "#c7d2fe";
@@ -100,10 +128,16 @@ export function Homepage() {
   const inputBg = isDark ? "#1e293b" : "#ffffff";
   const inputBorder = isDark ? "#334155" : "#cbd5e1";
   const accentBlue = "#2563eb";
-  const accentBlueSoft = isDark ? "#1d4ed8" : "#eff6ff";
+  const accentBlueSoft = isDark ? "#1d4ed820" : "#eff6ff";
   const accentBlueText = isDark ? "#93c5fd" : "#1d4ed8";
-  const newChatBg = "#2563eb";
+  const ctrlBg = isDark ? "#1e293b" : "#dbeafe";
+  const ctrlColor = isDark ? "#93c5fd" : "#1d4ed8";
   const historyHover = isDark ? "#1e293b" : "#dbeafe";
+
+  // Sidebar toggle icon based on language direction
+  const CollapseIcon = lang === "ar"
+    ? (sidebarOpen ? PanelLeftOpen : PanelLeftClose)
+    : (sidebarOpen ? PanelLeftClose : PanelLeftOpen);
 
   return (
     <div
@@ -118,41 +152,44 @@ export function Homepage() {
         overflow: "hidden",
       }}
     >
-      {/* Sidebar */}
+      {/* ─────────────── SIDEBAR ─────────────── */}
       <aside
         style={{
-          width: 260,
-          minWidth: 260,
+          width: sidebarOpen ? 260 : 0,
+          minWidth: sidebarOpen ? 260 : 0,
+          overflow: "hidden",
           backgroundColor: sidebarBg,
           borderLeft: lang === "ar" ? "none" : `1px solid ${sidebarBorder}`,
           borderRight: lang === "ar" ? `1px solid ${sidebarBorder}` : "none",
           display: "flex",
           flexDirection: "column",
-          padding: "16px 12px",
+          padding: sidebarOpen ? "16px 12px" : "0",
           gap: 8,
           order: lang === "ar" ? 1 : 0,
+          transition: "width 0.25s cubic-bezier(0.4,0,0.2,1), min-width 0.25s cubic-bezier(0.4,0,0.2,1), padding 0.2s",
+          flexShrink: 0,
         }}
       >
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 8px 16px", borderBottom: `1px solid ${sidebarBorder}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 8px 16px", borderBottom: `1px solid ${sidebarBorder}`, flexShrink: 0 }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10,
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
             background: "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 2px 8px rgba(37,99,235,0.35)"
+            boxShadow: "0 2px 8px rgba(37,99,235,0.35)",
           }}>
             <GraduationCap size={20} color="#fff" />
           </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: textMain }}>{tx.logo}</div>
-            <div style={{ fontSize: 10, color: textMuted, marginTop: -1 }}>{tx.tagline}</div>
+          <div style={{ overflow: "hidden" }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: textMain, whiteSpace: "nowrap" }}>{tx.logo}</div>
+            <div style={{ fontSize: 10, color: textMuted, marginTop: -1, whiteSpace: "nowrap" }}>{tx.tagline}</div>
           </div>
         </div>
 
         {/* New Chat */}
         <button
           style={{
-            backgroundColor: newChatBg,
+            backgroundColor: "#2563eb",
             color: "#ffffff",
             border: "none",
             borderRadius: 10,
@@ -166,7 +203,9 @@ export function Homepage() {
             gap: 6,
             justifyContent: "center",
             marginTop: 4,
+            flexShrink: 0,
             boxShadow: "0 2px 8px rgba(37,99,235,0.3)",
+            whiteSpace: "nowrap",
           }}
         >
           <MessageSquarePlus size={16} />
@@ -174,8 +213,8 @@ export function Homepage() {
         </button>
 
         {/* History */}
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: textMuted, textTransform: "uppercase", letterSpacing: "0.08em", padding: "4px 8px 8px" }}>
+        <div style={{ marginTop: 8, flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: textMuted, textTransform: "uppercase", letterSpacing: "0.08em", padding: "4px 8px 8px", whiteSpace: "nowrap" }}>
             {tx.todayLabel}
           </div>
           {tx.history.map((item, i) => (
@@ -192,68 +231,148 @@ export function Homepage() {
                 gap: 8,
                 transition: "all 0.15s",
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = historyHover; (e.currentTarget as HTMLDivElement).style.color = textMain; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLDivElement).style.color = textMuted; }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLDivElement).style.backgroundColor = historyHover;
+                (e.currentTarget as HTMLDivElement).style.color = textMain;
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent";
+                (e.currentTarget as HTMLDivElement).style.color = textMuted;
+              }}
             >
-              <MessageSquarePlus size={14} />
+              <MessageSquarePlus size={14} style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item}</span>
-              <MoreHorizontal size={14} style={{ opacity: 0.4 }} />
+              <MoreHorizontal size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
             </div>
           ))}
         </div>
 
-        {/* Bottom Controls */}
-        <div style={{ marginTop: "auto", display: "flex", gap: 8, padding: "12px 0 0" }}>
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setTheme(isDark ? "light" : "dark")}
-            title={isDark ? "Light mode" : "Dark mode"}
-            style={{
-              flex: 1,
-              backgroundColor: isDark ? "#1e293b" : "#dbeafe",
-              color: isDark ? "#93c5fd" : "#1d4ed8",
-              border: "none",
-              borderRadius: 8,
-              padding: "8px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              fontSize: 12,
-              fontWeight: 500,
-            }}
-          >
-            {isDark ? <Sun size={14} /> : <Moon size={14} />}
-            {isDark ? (lang === "ar" ? "فاتح" : "Light") : (lang === "ar" ? "داكن" : "Dark")}
-          </button>
+        {/* ── Bottom Controls ── */}
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 8, paddingTop: 12, borderTop: `1px solid ${sidebarBorder}` }}>
 
-          {/* Language Toggle */}
-          <button
-            onClick={() => setLang(lang === "ar" ? "en" : "ar")}
-            style={{
-              flex: 1,
-              backgroundColor: isDark ? "#1e293b" : "#dbeafe",
-              color: isDark ? "#93c5fd" : "#1d4ed8",
-              border: "none",
-              borderRadius: 8,
-              padding: "8px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
-            <Globe size={14} />
-            {tx.switchLang}
-          </button>
+          {/* Row 1: Theme + Language */}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              style={{
+                flex: 1, backgroundColor: ctrlBg, color: ctrlColor,
+                border: "none", borderRadius: 8, padding: "8px",
+                cursor: "pointer", display: "flex", alignItems: "center",
+                justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 500,
+                fontFamily: tx.font, whiteSpace: "nowrap",
+              }}
+            >
+              {isDark ? <Sun size={13} /> : <Moon size={13} />}
+              {isDark ? tx.themeLight : tx.themeDark}
+            </button>
+            <button
+              onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+              style={{
+                flex: 1, backgroundColor: ctrlBg, color: ctrlColor,
+                border: "none", borderRadius: 8, padding: "8px",
+                cursor: "pointer", display: "flex", alignItems: "center",
+                justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 600,
+                fontFamily: tx.font, whiteSpace: "nowrap",
+              }}
+            >
+              <Globe size={13} />
+              {tx.switchLang}
+            </button>
+          </div>
+
+          {/* Row 2: Auth area */}
+          {isLoggedIn ? (
+            /* Logged in: user info + settings + logout */
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {/* User identity */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 10px",
+                backgroundColor: accentBlueSoft,
+                borderRadius: 9,
+                border: `1px solid ${isDark ? "#1d4ed830" : "#bfdbfe"}`,
+              }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                  background: "linear-gradient(135deg, #1d4ed8, #60a5fa)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <User size={14} color="#fff" />
+                </div>
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: accentBlueText, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {tx.loggedInAs}
+                </span>
+              </div>
+              {/* Settings + Logout */}
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  style={{
+                    flex: 1, backgroundColor: ctrlBg, color: ctrlColor,
+                    border: "none", borderRadius: 8, padding: "8px 6px",
+                    cursor: "pointer", display: "flex", alignItems: "center",
+                    justifyContent: "center", gap: 5, fontSize: 11, fontWeight: 500,
+                    fontFamily: tx.font, whiteSpace: "nowrap",
+                  }}
+                >
+                  <Settings size={13} />
+                  {tx.settingsBtn}
+                </button>
+                <button
+                  onClick={() => setIsLoggedIn(false)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: isDark ? "#2d1515" : "#fff1f2",
+                    color: isDark ? "#f87171" : "#dc2626",
+                    border: `1px solid ${isDark ? "#7f1d1d40" : "#fecaca"}`,
+                    borderRadius: 8, padding: "8px 6px",
+                    cursor: "pointer", display: "flex", alignItems: "center",
+                    justifyContent: "center", gap: 5, fontSize: 11, fontWeight: 600,
+                    fontFamily: tx.font, whiteSpace: "nowrap",
+                  }}
+                >
+                  <LogOut size={13} />
+                  {tx.logoutBtn}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Not logged in: Login + Signup */
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setIsLoggedIn(true)}
+                style={{
+                  flex: 1, backgroundColor: ctrlBg, color: ctrlColor,
+                  border: "none", borderRadius: 8, padding: "9px 6px",
+                  cursor: "pointer", display: "flex", alignItems: "center",
+                  justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 500,
+                  fontFamily: tx.font, whiteSpace: "nowrap",
+                }}
+              >
+                <LogIn size={13} />
+                {tx.loginBtn}
+              </button>
+              <button
+                onClick={() => setIsLoggedIn(true)}
+                style={{
+                  flex: 1,
+                  background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
+                  color: "#fff",
+                  border: "none", borderRadius: 8, padding: "9px 6px",
+                  cursor: "pointer", display: "flex", alignItems: "center",
+                  justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 600,
+                  fontFamily: tx.font, whiteSpace: "nowrap",
+                  boxShadow: "0 2px 6px rgba(37,99,235,0.3)",
+                }}
+              >
+                <UserPlus size={13} />
+                {tx.signupBtn}
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
-      {/* Main Chat Area */}
+      {/* ─────────────── MAIN AREA ─────────────── */}
       <main
         style={{
           flex: 1,
@@ -261,6 +380,7 @@ export function Homepage() {
           flexDirection: "column",
           overflow: "hidden",
           backgroundColor: bg,
+          minWidth: 0,
         }}
       >
         {/* Top bar */}
@@ -268,38 +388,60 @@ export function Homepage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 24px",
+          padding: "10px 16px",
           borderBottom: `1px solid ${isDark ? "#1e293b" : "#e2e8f0"}`,
           backgroundColor: isDark ? "#0d1117" : "#ffffff",
+          gap: 8,
+          flexShrink: 0,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Sparkles size={16} color={accentBlue} />
-            <span style={{ fontSize: 13, color: textMuted, fontWeight: 500 }}>
+          {/* Left: sidebar toggle + assistant label */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              title={sidebarOpen ? tx.collapseTip : tx.expandTip}
+              style={{
+                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
+                border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
+                color: textMuted, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = isDark ? "#334155" : "#dbeafe"; (e.currentTarget as HTMLButtonElement).style.color = accentBlue; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = isDark ? "#1e293b" : "#f1f5f9"; (e.currentTarget as HTMLButtonElement).style.color = textMuted; }}
+            >
+              <CollapseIcon size={16} />
+            </button>
+            <Sparkles size={15} color={accentBlue} />
+            <span style={{ fontSize: 13, color: textMuted, fontWeight: 500, whiteSpace: "nowrap" }}>
               {tx.assistantLabel}
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {/* Stats badges */}
+
+          {/* Right: stats badges */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
             <div style={{
               display: "flex", alignItems: "center", gap: 5,
               backgroundColor: accentBlueSoft,
               color: accentBlueText,
-              borderRadius: 20, padding: "4px 12px",
+              borderRadius: 20, padding: "4px 10px",
               fontSize: 11, fontWeight: 600,
-              border: `1px solid ${isDark ? "#1d4ed8" : "#bfdbfe"}`,
+              border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}`,
+              whiteSpace: "nowrap",
             }}>
-              <Building size={12} />
+              <Building size={11} />
               {tx.stat1}
             </div>
             <div style={{
               display: "flex", alignItems: "center", gap: 5,
               backgroundColor: accentBlueSoft,
               color: accentBlueText,
-              borderRadius: 20, padding: "4px 12px",
+              borderRadius: 20, padding: "4px 10px",
               fontSize: 11, fontWeight: 600,
-              border: `1px solid ${isDark ? "#1d4ed8" : "#bfdbfe"}`,
+              border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}`,
+              whiteSpace: "nowrap",
             }}>
-              <Building2 size={12} />
+              <Building2 size={11} />
               {tx.stat2}
             </div>
           </div>
@@ -314,7 +456,7 @@ export function Homepage() {
               background: "linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%)",
               display: "flex", alignItems: "center", justifyContent: "center",
               margin: "0 auto 20px",
-              boxShadow: "0 8px 24px rgba(37,99,235,0.35)"
+              boxShadow: "0 8px 24px rgba(37,99,235,0.35)",
             }}>
               <GraduationCap size={30} color="#fff" />
             </div>
@@ -405,6 +547,7 @@ export function Homepage() {
           padding: "16px 24px 8px",
           borderTop: `1px solid ${isDark ? "#1e293b" : "#e2e8f0"}`,
           backgroundColor: isDark ? "#0d1117" : "#ffffff",
+          flexShrink: 0,
         }}>
           <div style={{
             maxWidth: 700, margin: "0 auto",
