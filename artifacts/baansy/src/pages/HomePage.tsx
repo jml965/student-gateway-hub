@@ -429,7 +429,7 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
                 <button onClick={() => setDrawerOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, padding: 4 }}><X size={20} /></button>
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "12px 12px 0", gap: 8, overflow: "hidden" }}>
-                <SidebarContent />
+                {SidebarContent()}
               </div>
             </div>
           </div>
@@ -449,7 +449,7 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
             <button onClick={() => setDrawerOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, padding: 4 }}><Menu size={22} color={textMain} /></button>
           </div>
         </div>
-        <ChatArea />
+        {ChatArea()}
         <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
       </div>
     );
@@ -463,11 +463,11 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
           {sidebarOpen ? <PanClose size={15} /> : <PanOpen size={15} />}
         </button>
         <aside style={{ width: sidebarOpen ? 260 : 0, minWidth: sidebarOpen ? 260 : 0, overflow: "hidden", backgroundColor: sidebarBg, borderLeft: lang === "ar" ? "none" : `1px solid ${sidebarBorder}`, borderRight: lang === "ar" ? `1px solid ${sidebarBorder}` : "none", display: "flex", flexDirection: "column", padding: sidebarOpen ? "16px 12px" : "0", gap: 8, transition: "width .25s cubic-bezier(.4,0,.2,1),min-width .25s,padding .2s", flexShrink: 0, height: "100vh" }}>
-          <SidebarContent />
+          {SidebarContent()}
         </aside>
       </div>
       <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", backgroundColor: bg, minWidth: 0 }}>
-        <ChatArea />
+        {ChatArea()}
       </main>
       <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
     </div>
