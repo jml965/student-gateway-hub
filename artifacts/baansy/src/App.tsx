@@ -1,16 +1,23 @@
 import { useState, useEffect } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import HomePage from "@/pages/HomePage";
-import { LoginPage, SignupPage, ForgotPage } from "@/pages/AuthPages";
+import { LoginPage, SignupPage, ForgotPage, ResetPasswordPage } from "@/pages/AuthPages";
 import ReferralPage from "@/pages/ReferralPage";
 import AdminPage from "@/pages/AdminPage";
 
-type Page = "home" | "login" | "signup" | "forgot" | "referral" | "admin";
+type Page = "home" | "login" | "signup" | "forgot" | "reset-password" | "referral" | "admin";
 type Lang = "ar" | "en";
 type Theme = "light" | "dark";
 
+function detectInitialPage(): Page {
+  const path = window.location.pathname;
+  const params = new URLSearchParams(window.location.search);
+  if (path.includes("reset-password") || params.has("token")) return "reset-password";
+  return "home";
+}
+
 export default function App() {
-  const [page, setPage] = useState<Page>("home");
+  const [page, setPage] = useState<Page>(detectInitialPage);
   const [lang, setLang] = useState<Lang>("ar");
   const [theme, setTheme] = useState<Theme>("light");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -41,6 +48,7 @@ export default function App() {
         {page === "login" && <LoginPage {...commonProps} />}
         {page === "signup" && <SignupPage {...commonProps} />}
         {page === "forgot" && <ForgotPage {...commonProps} />}
+        {page === "reset-password" && <ResetPasswordPage {...commonProps} />}
         {page === "referral" && <ReferralPage {...commonProps} />}
         {page === "admin" && <AdminPage {...commonProps} />}
       </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
-import { GraduationCap, Mail, Lock, Eye, EyeOff, LogIn, UserPlus, ArrR, ArrL, OkCircle, UserIco } from "@/components/icons";
+import { GraduationCap, Mail, Lock, Eye, EyeOff, LogIn, UserPlus, ArrR, ArrL, OkCircle, UserIco, Key } from "@/components/icons";
 
 type Page = "login" | "signup" | "forgot";
 type Lang = "ar" | "en";
@@ -10,6 +10,9 @@ type Theme = "light" | "dark";
 const T = {
   ar: {
     dir: "rtl" as const, font: "'Cairo','Inter',sans-serif",
+    resetTitle: "تعيين كلمة مرور جديدة", resetSub: "أدخل كلمة مرور جديدة لحسابك",
+    resetSubmit: "تعيين كلمة المرور", resetOkTitle: "تم بنجاح!", resetOkMsg: "تم تعيين كلمة المرور الجديدة. يمكنك الآن تسجيل الدخول.",
+    invalidToken: "رابط إعادة التعيين غير صالح أو منتهي الصلاحية.",
     loginTitle: "تسجيل الدخول", loginSub: "مرحباً بعودتك! أدخل بياناتك للمتابعة",
     emailL: "البريد الإلكتروني", emailPH: "example@email.com",
     passL: "كلمة المرور", passPH: "أدخل كلمة المرور",
@@ -28,6 +31,9 @@ const T = {
   },
   en: {
     dir: "ltr" as const, font: "'Inter','Cairo',sans-serif",
+    resetTitle: "Set New Password", resetSub: "Enter a new password for your account",
+    resetSubmit: "Reset Password", resetOkTitle: "Password Updated!", resetOkMsg: "Your password has been reset. You can now sign in with your new password.",
+    invalidToken: "This reset link is invalid or has expired.",
     loginTitle: "Welcome back", loginSub: "Enter your credentials to continue",
     emailL: "Email address", emailPH: "example@email.com",
     passL: "Password", passPH: "Enter your password",
@@ -64,7 +70,20 @@ function AuthWrap({ lang, theme, children }: { lang: Lang; theme: Theme; childre
   );
 }
 
-function AuthInput({ label, type = "text", placeholder, value, onChange, icon: Ic, rightSlot, error, lang, theme }: any) {
+interface AuthInputProps {
+  label: string;
+  type?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  icon?: React.ComponentType<{ size?: number; color?: string }>;
+  rightSlot?: React.ReactNode;
+  error?: string;
+  lang: Lang;
+  theme: Theme;
+}
+
+function AuthInput({ label, type = "text", placeholder, value, onChange, icon: Ic, rightSlot, error, lang, theme }: AuthInputProps) {
   const tx = T[lang]; const isDark = theme === "dark";
   const textMain = isDark ? "#f1f5f9" : "#1e293b";
   const textMuted = isDark ? "#94a3b8" : "#64748b";
@@ -115,8 +134,8 @@ export function LoginPage({ lang, theme, navigate }: { lang: Lang; theme: Theme;
       <h2 style={{ fontSize: 22, fontWeight: 800, color: textMain, textAlign: "center", marginBottom: 6 }}>{tx.loginTitle}</h2>
       <p style={{ fontSize: 13, color: textMuted, textAlign: "center", marginBottom: 28 }}>{tx.loginSub}</p>
       {apiErr && <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: 16, textAlign: "center" }}>{apiErr}</div>}
-      <AuthInput label={tx.emailL} type="email" placeholder={tx.emailPH} value={email} onChange={(e: any) => setEmail(e.target.value)} icon={Mail} error={errs.email} lang={lang} theme={theme} />
-      <AuthInput label={tx.passL} type={show ? "text" : "password"} placeholder={tx.passPH} value={pass} onChange={(e: any) => setPass(e.target.value)} icon={Lock} error={errs.pass} lang={lang} theme={theme}
+      <AuthInput label={tx.emailL} type="email" placeholder={tx.emailPH} value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} icon={Mail} error={errs.email} lang={lang} theme={theme} />
+      <AuthInput label={tx.passL} type={show ? "text" : "password"} placeholder={tx.passPH} value={pass} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPass(e.target.value)} icon={Lock} error={errs.pass} lang={lang} theme={theme}
         rightSlot={<button onClick={() => setShow(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", color: textMuted, flexShrink: 0 }}>{show ? <EyeOff size={16} /> : <Eye size={16} />}</button>} />
       <div style={{ textAlign: lang === "ar" ? "left" : "right", marginTop: -8, marginBottom: 24 }}>
         <button onClick={() => navigate("forgot")} style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: 12, fontWeight: 600, fontFamily: tx.font }}>{tx.forgotBtn}</button>
@@ -169,11 +188,11 @@ export function SignupPage({ lang, theme, navigate }: { lang: Lang; theme: Theme
       <h2 style={{ fontSize: 22, fontWeight: 800, color: textMain, textAlign: "center", marginBottom: 6 }}>{tx.signupTitle}</h2>
       <p style={{ fontSize: 13, color: textMuted, textAlign: "center", marginBottom: 22 }}>{tx.signupSub}</p>
       {apiErr && <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: 16, textAlign: "center" }}>{apiErr}</div>}
-      <AuthInput label={tx.nameL} placeholder={tx.namePH} value={name} onChange={(e: any) => setName(e.target.value)} icon={UserIco} error={errs.name} lang={lang} theme={theme} />
-      <AuthInput label={tx.emailL} type="email" placeholder={tx.emailPH} value={email} onChange={(e: any) => setEmail(e.target.value)} icon={Mail} error={errs.email} lang={lang} theme={theme} />
-      <AuthInput label={tx.passL} type={showP ? "text" : "password"} placeholder={tx.passPH} value={pass} onChange={(e: any) => setPass(e.target.value)} icon={Lock} error={errs.pass} lang={lang} theme={theme}
+      <AuthInput label={tx.nameL} placeholder={tx.namePH} value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} icon={UserIco} error={errs.name} lang={lang} theme={theme} />
+      <AuthInput label={tx.emailL} type="email" placeholder={tx.emailPH} value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} icon={Mail} error={errs.email} lang={lang} theme={theme} />
+      <AuthInput label={tx.passL} type={showP ? "text" : "password"} placeholder={tx.passPH} value={pass} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPass(e.target.value)} icon={Lock} error={errs.pass} lang={lang} theme={theme}
         rightSlot={<button onClick={() => setShowP(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", color: textMuted, flexShrink: 0 }}>{showP ? <EyeOff size={16} /> : <Eye size={16} />}</button>} />
-      <AuthInput label={tx.confL} type={showC ? "text" : "password"} placeholder={tx.confPH} value={conf} onChange={(e: any) => setConf(e.target.value)} icon={Lock} error={errs.conf} lang={lang} theme={theme}
+      <AuthInput label={tx.confL} type={showC ? "text" : "password"} placeholder={tx.confPH} value={conf} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConf(e.target.value)} icon={Lock} error={errs.conf} lang={lang} theme={theme}
         rightSlot={<button onClick={() => setShowC(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", color: textMuted, flexShrink: 0 }}>{showC ? <EyeOff size={16} /> : <Eye size={16} />}</button>} />
       <div style={{ marginBottom: 20 }}>
         <div onClick={() => setAgreed(a => !a)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", direction: tx.dir }}>
@@ -224,9 +243,88 @@ export function ForgotPage({ lang, theme, navigate }: { lang: Lang; theme: Theme
         <>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: textMain, textAlign: "center", marginBottom: 6 }}>{tx.forgotTitle}</h2>
           <p style={{ fontSize: 13, color: textMuted, textAlign: "center", marginBottom: 28 }}>{tx.forgotSub}</p>
-          <AuthInput label={tx.emailL} type="email" placeholder={tx.emailPH} value={email} onChange={(e: any) => setEmail(e.target.value)} icon={Mail} error={errs.email} lang={lang} theme={theme} />
+          <AuthInput label={tx.emailL} type="email" placeholder={tx.emailPH} value={email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)} icon={Mail} error={errs.email} lang={lang} theme={theme} />
           <button onClick={submit} disabled={load} style={{ width: "100%", padding: 14, background: load ? "#93c5fd" : "linear-gradient(135deg,#1d4ed8,#3b82f6)", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: load ? "default" : "pointer", fontFamily: tx.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 14px rgba(37,99,235,.35)" }}>
             {load ? "..." : tx.sendLink}
+          </button>
+          <div style={{ textAlign: "center", marginTop: 20 }}>
+            <button onClick={() => navigate("login")} style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, fontSize: 12, fontFamily: tx.font, display: "inline-flex", alignItems: "center", gap: 5 }}>
+              {lang === "ar" ? <ArrR size={13} /> : <ArrL size={13} />}{tx.backToLogin}
+            </button>
+          </div>
+        </>
+      )}
+    </AuthWrap>
+  );
+}
+
+export function ResetPasswordPage({ lang, theme, navigate }: { lang: Lang; theme: Theme; navigate: (p: string) => void }) {
+  const tx = T[lang]; const isDark = theme === "dark";
+  const textMain = isDark ? "#f1f5f9" : "#1e293b"; const textMuted = isDark ? "#94a3b8" : "#64748b";
+
+  // Extract token from URL query string
+  const token = new URLSearchParams(window.location.search).get("token") ?? "";
+
+  const [pass, setPass] = useState(""); const [conf, setConf] = useState("");
+  const [showP, setShowP] = useState(false); const [showC, setShowC] = useState(false);
+  const [errs, setErrs] = useState<Record<string, string>>({});
+  const [load, setLoad] = useState(false); const [done, setDone] = useState(false);
+  const [apiErr, setApiErr] = useState("");
+
+  const submit = async () => {
+    const e: Record<string, string> = {};
+    if (!pass || pass.length < 8) e.pass = lang === "ar" ? "كلمة المرور يجب أن تكون 8 أحرف على الأقل" : "Password must be at least 8 characters";
+    if (!conf) e.conf = tx.req;
+    else if (pass && conf && pass !== conf) e.conf = tx.noMatch;
+    setErrs(e); setApiErr("");
+    if (Object.keys(e).length) return;
+    setLoad(true);
+    try {
+      await api.post("/auth/reset-password", { token, password: pass });
+      // Clear token from URL bar without navigation
+      window.history.replaceState({}, "", window.location.pathname);
+      setDone(true);
+    } catch (err: unknown) {
+      setApiErr(err instanceof Error ? err.message : (lang === "ar" ? "حدث خطأ، يرجى المحاولة مجدداً" : "Something went wrong. Please try again."));
+    } finally {
+      setLoad(false);
+    }
+  };
+
+  return (
+    <AuthWrap lang={lang} theme={theme}>
+      {!token ? (
+        <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#dc2626,#ef4444)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", boxShadow: "0 8px 24px rgba(220,38,38,.3)" }}>
+            <Key size={28} color="#fff" />
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: textMain, marginBottom: 10 }}>{tx.invalidToken}</h2>
+          <button onClick={() => navigate("forgot")} style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: 13, fontWeight: 700, fontFamily: tx.font, marginTop: 16 }}>
+            {lang === "ar" ? "طلب رابط جديد" : "Request a new link"}
+          </button>
+        </div>
+      ) : done ? (
+        <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#16a34a,#22c55e)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", boxShadow: "0 8px 24px rgba(22,163,74,.3)" }}>
+            <OkCircle size={30} color="#fff" />
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: textMain, marginBottom: 10 }}>{tx.resetOkTitle}</h2>
+          <p style={{ fontSize: 13, color: textMuted, lineHeight: 1.6, marginBottom: 28 }}>{tx.resetOkMsg}</p>
+          <button onClick={() => navigate("login")} style={{ background: "linear-gradient(135deg,#1d4ed8,#3b82f6)", color: "#fff", border: "none", borderRadius: 12, padding: "13px 32px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: tx.font }}>
+            {lang === "ar" ? "تسجيل الدخول" : "Sign In"}
+          </button>
+        </div>
+      ) : (
+        <>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: textMain, textAlign: "center", marginBottom: 6 }}>{tx.resetTitle}</h2>
+          <p style={{ fontSize: 13, color: textMuted, textAlign: "center", marginBottom: 28 }}>{tx.resetSub}</p>
+          {apiErr && <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: 16, textAlign: "center" }}>{apiErr}</div>}
+          <AuthInput label={tx.passL} type={showP ? "text" : "password"} placeholder={tx.passPH} value={pass} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPass(e.target.value)} icon={Lock} error={errs.pass} lang={lang} theme={theme}
+            rightSlot={<button onClick={() => setShowP(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", color: textMuted, flexShrink: 0 }}>{showP ? <EyeOff size={16} /> : <Eye size={16} />}</button>} />
+          <AuthInput label={tx.confL} type={showC ? "text" : "password"} placeholder={tx.confPH} value={conf} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConf(e.target.value)} icon={Lock} error={errs.conf} lang={lang} theme={theme}
+            rightSlot={<button onClick={() => setShowC(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", color: textMuted, flexShrink: 0 }}>{showC ? <EyeOff size={16} /> : <Eye size={16} />}</button>} />
+          <button onClick={submit} disabled={load} style={{ width: "100%", padding: 14, background: load ? "#93c5fd" : "linear-gradient(135deg,#1d4ed8,#3b82f6)", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: load ? "default" : "pointer", fontFamily: tx.font, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 4px 14px rgba(37,99,235,.35)", marginTop: 8 }}>
+            {load ? "..." : <><Key size={16} />{tx.resetSubmit}</>}
           </button>
           <div style={{ textAlign: "center", marginTop: 20 }}>
             <button onClick={() => navigate("login")} style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, fontSize: 12, fontFamily: tx.font, display: "inline-flex", alignItems: "center", gap: 5 }}>
