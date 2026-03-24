@@ -133,13 +133,13 @@ export function HomepageMobile() {
   const ctrlBg = isDark ? "#1e293b" : "#dbeafe";
   const ctrlColor = isDark ? "#93c5fd" : "#1d4ed8";
 
-  // Group services into pairs
+  // Group services into sets of 4 (2 rows × 2 cols per slide)
   const services = tx.services;
-  const pairs: typeof services[] = [];
-  for (let i = 0; i < services.length; i += 2) {
-    pairs.push(services.slice(i, i + 2));
+  const groups: typeof services[] = [];
+  for (let i = 0; i < services.length; i += 4) {
+    groups.push(services.slice(i, i + 4));
   }
-  const totalSlides = pairs.length;
+  const totalSlides = groups.length;
 
   const goToSlide = (idx: number) => {
     const clamped = Math.max(0, Math.min(idx, totalSlides - 1));
@@ -422,7 +422,7 @@ export function HomepageMobile() {
           </p>
         </div>
 
-        {/* ── Carousel: 2 cards per slide, horizontal scroll snap ── */}
+        {/* ── Carousel: 4 cards per slide (2 rows × 2 cols), horizontal layout ── */}
         <div style={{ width: "100%", position: "relative" }}>
           {/* Scrollable track */}
           <div
@@ -433,103 +433,83 @@ export function HomepageMobile() {
               overflowX: "auto",
               scrollSnapType: "x mandatory",
               scrollBehavior: "smooth",
-              gap: 0,
               width: "100%",
               scrollbarWidth: "none",
               msOverflowStyle: "none",
             }}
           >
-            {pairs.map((pair, pi) => (
+            {groups.map((group, gi) => (
               <div
-                key={pi}
+                key={gi}
                 style={{
                   minWidth: "100%",
                   scrollSnapAlign: "start",
-                  display: "flex",
-                  gap: 10,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gridTemplateRows: "auto auto",
+                  gap: 8,
                   padding: "2px 2px 4px",
                   boxSizing: "border-box",
-                  alignItems: "stretch",
                 }}
               >
-                {pair.map((svc, si) => {
+                {group.map((svc, si) => {
                   const Icon = svc.icon;
                   return (
                     <div
                       key={si}
                       style={{
-                        width: "calc(50% - 5px)",
-                        flex: "0 0 calc(50% - 5px)",
                         backgroundColor: cardBg,
                         border: `1.5px solid ${cardBorder}`,
-                        borderRadius: 16,
-                        padding: "14px 12px 12px",
+                        borderRadius: 14,
+                        padding: "11px 10px",
                         cursor: "pointer",
                         display: "flex",
-                        flexDirection: "column",
-                        alignItems: isAr ? "flex-end" : "flex-start",
-                        gap: 10,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 9,
                         boxShadow: isDark
-                          ? "0 2px 12px rgba(0,0,0,0.3)"
-                          : "0 2px 10px rgba(37,99,235,0.07)",
-                        transition: "border-color 0.15s, box-shadow 0.15s, transform 0.15s",
+                          ? "0 2px 10px rgba(0,0,0,0.28)"
+                          : "0 2px 8px rgba(37,99,235,0.07)",
+                        transition: "border-color 0.15s, box-shadow 0.15s",
+                        direction: tx.dir,
+                        minWidth: 0,
                       }}
                       onMouseEnter={e => {
                         (e.currentTarget as HTMLDivElement).style.borderColor = accentBlue;
-                        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 18px rgba(37,99,235,0.2)";
-                        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(37,99,235,0.18)";
                       }}
                       onMouseLeave={e => {
                         (e.currentTarget as HTMLDivElement).style.borderColor = cardBorder;
-                        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark ? "0 2px 12px rgba(0,0,0,0.3)" : "0 2px 10px rgba(37,99,235,0.07)";
-                        (e.currentTarget as HTMLDivElement).style.transform = "none";
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark ? "0 2px 10px rgba(0,0,0,0.28)" : "0 2px 8px rgba(37,99,235,0.07)";
                       }}
                     >
-                      {/* Icon */}
+                      {/* Icon square */}
                       <div style={{
-                        width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+                        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
                         background: isDark
                           ? "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)"
                           : "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        boxShadow: isDark ? "0 2px 8px rgba(37,99,235,0.4)" : "0 2px 6px rgba(37,99,235,0.15)",
+                        boxShadow: isDark ? "0 2px 6px rgba(37,99,235,0.4)" : "0 1px 4px rgba(37,99,235,0.15)",
                       }}>
-                        <Icon size={20} color={isDark ? "#93c5fd" : "#1d4ed8"} />
+                        <Icon size={17} color={isDark ? "#93c5fd" : "#1d4ed8"} />
                       </div>
 
-                      {/* Text */}
-                      <div style={{ flex: 1, width: "100%", minHeight: 0 }}>
+                      {/* Text beside icon */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
-                          fontSize: 12, fontWeight: 700, color: textMain,
-                          marginBottom: 4, textAlign: isAr ? "right" : "left",
-                          lineHeight: 1.3,
+                          fontSize: 11, fontWeight: 700, color: textMain,
+                          lineHeight: 1.3, marginBottom: 2,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
                           {svc.label}
                         </div>
                         <div style={{
-                          fontSize: 10, color: textMuted,
-                          textAlign: isAr ? "right" : "left",
-                          lineHeight: 1.5,
+                          fontSize: 9.5, color: textMuted,
+                          lineHeight: 1.4,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
                           {svc.desc}
-                        </div>
-                      </div>
-
-                      {/* Arrow chip */}
-                      <div style={{
-                        display: "flex",
-                        justifyContent: isAr ? "flex-start" : "flex-end",
-                        width: "100%",
-                      }}>
-                        <div style={{
-                          width: 22, height: 22, borderRadius: 7,
-                          backgroundColor: accentBlueSoft,
-                          border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}`,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          {isAr
-                            ? <ChevronLeft size={12} color={accentBlueText} />
-                            : <ChevronRight size={12} color={accentBlueText} />}
                         </div>
                       </div>
                     </div>
@@ -559,7 +539,7 @@ export function HomepageMobile() {
 
             {/* Dots */}
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              {pairs.map((_, i) => (
+              {groups.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => goToSlide(i)}
