@@ -89,10 +89,11 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-  if (user.status !== "active") {
+  if (user.status === "suspended") {
     res.status(401).json({ error: "account_suspended", message: "Your account has been suspended" });
     return;
   }
+  // University users can log in even while pending (to check status in portal)
 
   const { token, expiresAt } = signToken({ userId: user.id, role: user.role });
   await sessionStore.store(user.id, token, expiresAt);
@@ -107,6 +108,7 @@ router.post("/login", async (req, res) => {
       country: user.country,
       role: user.role,
       status: user.status,
+      universityId: user.universityId,
       createdAt: user.createdAt,
     },
   });
@@ -140,6 +142,7 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
     country: user.country,
     role: user.role,
     status: user.status,
+    universityId: user.universityId,
     createdAt: user.createdAt,
   });
 });

@@ -120,8 +120,10 @@ export function LoginPage({ lang, theme, navigate }: { lang: Lang; theme: Theme;
     if (Object.keys(e).length) return;
     setLoad(true);
     try {
-      await login(email, pass);
-      navigate("home");
+      const u = await login(email, pass);
+      if (u.role === "university") navigate("university-portal");
+      else if (u.role === "admin") navigate("admin");
+      else navigate("home");
     } catch (err: any) {
       setApiErr(err.message || "Login failed");
     } finally {
@@ -146,7 +148,13 @@ export function LoginPage({ lang, theme, navigate }: { lang: Lang; theme: Theme;
       <p style={{ textAlign: "center", fontSize: 13, color: textMuted, marginTop: 20 }}>
         {tx.noAcc}&nbsp;<button onClick={() => navigate("signup")} style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontWeight: 700, fontSize: 13, fontFamily: tx.font }}>{tx.goSignup}</button>
       </p>
-      <div style={{ textAlign: "center", marginTop: 10 }}>
+      <div style={{ margin: "16px 0", borderTop: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, paddingTop: 16, textAlign: "center" }}>
+        <span style={{ fontSize: 12, color: textMuted }}>{lang === "ar" ? "هل أنت جامعة؟" : "Are you a university?"}&nbsp;</span>
+        <button onClick={() => navigate("university-register")} style={{ background: "none", border: "none", cursor: "pointer", color: "#7c3aed", fontWeight: 700, fontSize: 12, fontFamily: tx.font }}>
+          {lang === "ar" ? "سجّل جامعتك" : "Register your university"}
+        </button>
+      </div>
+      <div style={{ textAlign: "center", marginTop: 4 }}>
         <button onClick={() => navigate("home")} style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, fontSize: 12, fontFamily: tx.font, display: "inline-flex", alignItems: "center", gap: 5 }}>
           {lang === "ar" ? <ArrR size={13} /> : <ArrL size={13} />}{tx.backHome}
         </button>

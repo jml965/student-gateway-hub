@@ -1,8 +1,8 @@
-import { pgTable, text, serial, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, pgEnum, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const userRoleEnum = pgEnum("user_role", ["student", "admin"]);
+export const userRoleEnum = pgEnum("user_role", ["student", "admin", "university"]);
 export const userStatusEnum = pgEnum("user_status", ["active", "suspended", "pending"]);
 
 export const usersTable = pgTable("users", {
@@ -14,6 +14,7 @@ export const usersTable = pgTable("users", {
   country: text("country"),
   role: userRoleEnum("role").notNull().default("student"),
   status: userStatusEnum("status").notNull().default("active"),
+  universityId: integer("university_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

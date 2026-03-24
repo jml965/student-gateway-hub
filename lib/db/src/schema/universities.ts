@@ -1,8 +1,8 @@
-import { pgTable, text, serial, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, pgEnum, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const universityStatusEnum = pgEnum("university_status", ["active", "inactive"]);
+export const universityStatusEnum = pgEnum("university_status", ["active", "inactive", "pending", "rejected"]);
 export const paymentModeEnum = pgEnum("payment_mode", ["direct", "platform"]);
 
 export const universitiesTable = pgTable("universities", {
@@ -13,14 +13,23 @@ export const universitiesTable = pgTable("universities", {
   city: text("city").notNull(),
   logoUrl: text("logo_url"),
   website: text("website"),
+  descriptionAr: text("description_ar"),
+  descriptionEn: text("description_en"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
   paymentMode: paymentModeEnum("payment_mode").notNull().default("platform"),
   status: universityStatusEnum("status").notNull().default("active"),
+  approvedBy: integer("approved_by"),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const insertUniversitySchema = createInsertSchema(universitiesTable).omit({
   id: true,
   createdAt: true,
+  approvedAt: true,
+  approvedBy: true,
 });
 export type InsertUniversity = z.infer<typeof insertUniversitySchema>;
 export type University = typeof universitiesTable.$inferSelect;

@@ -7,8 +7,9 @@ interface User {
   email: string;
   phone?: string | null;
   country?: string | null;
-  role: "student" | "admin";
+  role: "student" | "admin" | "university";
   status: string;
+  universityId?: number | null;
   createdAt: string;
 }
 
@@ -17,8 +18,9 @@ interface AuthCtx {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAdmin: boolean;
+  isUniversity: boolean;
 }
 
 interface RegisterData {
@@ -45,10 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const res = await api.post<{ token: string; user: User }>("/auth/login", { email, password });
     setToken(res.token);
     setUser(res.user);
+    return res.user;
   };
 
   const register = async (data: RegisterData) => {
@@ -57,14 +60,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.user);
   };
 
-  const logout = () => {
-    api.post("/auth/logout").catch(() => {});
+  const logout = async () => {
+    await api.post("/auth/logout").catch(() => {});
     clearToken();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin: user?.role === "admin" }}>
+    <AuthContext.Provider value={{
+      user, loading, login, register, logout,
+      isAdmin: user?.role === "admin",
+      isUniversity: user?.role === "university",
+    }}>
       {children}
     </AuthContext.Provider>
   );

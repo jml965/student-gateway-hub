@@ -10,7 +10,13 @@ interface AiSettings {
   model: string; systemPrompt: string; temperature: number;
   maxTokens: number; typingSpeedMs: number; hasApiKey: boolean;
 }
-interface Stats { totalUsers: number; totalSessions: number; totalMessages: number; totalApplications: number; }
+interface Stats { totalUsers: number; totalSessions: number; totalMessages: number; totalApplications: number; totalDocuments: number; totalUniversities: number; }
+
+interface University {
+  id: number; nameAr: string; nameEn: string; country: string; city: string;
+  email: string | null; phone: string | null; website: string | null;
+  status: string; createdAt: string; specializationCount: number;
+}
 
 const MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"];
 
@@ -31,12 +37,21 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [localSettings, setLocalSettings] = useState<Partial<AiSettings>>({});
-  const [tab, setTab] = useState<"stats" | "ai">("stats");
+  const [tab, setTab] = useState<"stats" | "ai" | "universities">("stats");
+
+  const [unis, setUnis] = useState<University[]>([]);
+  const [uniFilter, setUniFilter] = useState<string>("pending");
+  const [uniLoading, setUniLoading] = useState(false);
+  const [actionId, setActionId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== "admin") { navigate("home"); return; }
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (tab === "universities") loadUniversities();
+  }, [tab, uniFilter]);
 
   const loadData = async () => {
     try {
@@ -48,6 +63,22 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
       setLocalSettings(s);
       setStats(st);
     } catch { }
+  };
+
+  const loadUniversities = async () => {
+    setUniLoading(true);
+    try {
+      const res = await api.get<{ data: University[] }>(`/admin/universities${uniFilter ? `?status=${uniFilter}` : ""}`);
+      setUnis(res.data);
+    } catch { } finally { setUniLoading(false); }
+  };
+
+  const handleUniAction = async (id: number, action: "approve" | "reject" | "suspend") => {
+    setActionId(id);
+    try {
+      await api.patch(`/admin/universities/${id}/${action}`, {});
+      await loadUniversities();
+    } catch { } finally { setActionId(null); }
   };
 
   const save = async () => {
@@ -84,8 +115,12 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
       </div>
 
       <div style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-          {[{ id: "stats", icon: BarChart, label: isAr ? "الإحصائيات" : "Statistics" }, { id: "ai", icon: Gear, label: isAr ? "إعدادات الذكاء الاصطناعي" : "AI Settings" }].map(t => (
+        <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
+          {[
+            { id: "stats", icon: BarChart, label: isAr ? "الإحصائيات" : "Statistics" },
+            { id: "universities", icon: GraduationCap, label: isAr ? "الجامعات" : "Universities" },
+            { id: "ai", icon: Gear, label: isAr ? "إعدادات الذكاء الاصطناعي" : "AI Settings" },
+          ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id as any)} style={{ padding: "8px 16px", borderRadius: 10, border: `1px solid ${tab === t.id ? "#2563eb" : border}`, backgroundColor: tab === t.id ? "#2563eb" : cardBg, color: tab === t.id ? "#fff" : textMuted, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: font, display: "flex", alignItems: "center", gap: 6 }}>
               <t.icon size={15} />{t.label}
             </button>
@@ -103,6 +138,87 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
               ))}
             </div>
           </>
+        )}
+
+        {tab === "universities" && (
+          <div>
+            {/* Filter tabs */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+              {[
+                { v: "pending", l: isAr ? "⏳ قيد المراجعة" : "⏳ Pending" },
+                { v: "active", l: isAr ? "✅ مفعّلة" : "✅ Active" },
+                { v: "rejected", l: isAr ? "❌ مرفوضة" : "❌ Rejected" },
+                { v: "", l: isAr ? "الكل" : "All" },
+              ].map(f => (
+                <button key={f.v} onClick={() => setUniFilter(f.v)} style={{
+                  padding: "6px 14px", borderRadius: 8, border: `1px solid ${uniFilter === f.v ? "#2563eb" : border}`,
+                  background: uniFilter === f.v ? "#2563eb" : cardBg, color: uniFilter === f.v ? "#fff" : textMuted,
+                  cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: font,
+                }}>
+                  {f.l}
+                </button>
+              ))}
+            </div>
+
+            {uniLoading ? (
+              <div style={{ textAlign: "center", color: textMuted, padding: 40 }}>{isAr ? "جارٍ التحميل..." : "Loading..."}</div>
+            ) : unis.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 60, color: textMuted, background: cardBg, borderRadius: 16 }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>🏛️</div>
+                <p>{isAr ? "لا توجد جامعات في هذه الفئة" : "No universities in this category"}</p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {unis.map(uni => {
+                  const statusColor = { pending: "#f59e0b", active: "#10b981", rejected: "#ef4444", inactive: "#6b7280" }[uni.status] ?? "#6b7280";
+                  return (
+                    <div key={uni.id} style={{ background: cardBg, borderRadius: 14, padding: 20, border: `1px solid ${border}`, boxShadow: "0 1px 6px rgba(0,0,0,0.06)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 16, color: textMain, marginBottom: 4 }}>
+                            {isAr ? uni.nameAr : uni.nameEn}
+                          </div>
+                          <div style={{ fontSize: 12, color: textMuted, marginBottom: 8 }}>
+                            🌍 {uni.country} · {uni.city}
+                            {uni.email && <> · 📧 {uni.email}</>}
+                            {uni.website && <> · <a href={uni.website} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }}>{uni.website}</a></>}
+                          </div>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 11, background: statusColor + "20", color: statusColor, padding: "3px 10px", borderRadius: 20, fontWeight: 600 }}>
+                              {uni.status}
+                            </span>
+                            <span style={{ fontSize: 11, background: isDark ? "#1e293b" : "#f1f5f9", color: textMuted, padding: "3px 10px", borderRadius: 20 }}>
+                              {uni.specializationCount} {isAr ? "تخصص" : "specializations"}
+                            </span>
+                            <span style={{ fontSize: 11, color: textMuted }}>
+                              {new Date(uni.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                          {uni.status === "pending" && (
+                            <>
+                              <button onClick={() => handleUniAction(uni.id, "approve")} disabled={actionId === uni.id} style={{ background: "#10b981", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: font }}>
+                                {isAr ? "موافقة" : "Approve"}
+                              </button>
+                              <button onClick={() => handleUniAction(uni.id, "reject")} disabled={actionId === uni.id} style={{ background: "#fee2e2", color: "#dc2626", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: font }}>
+                                {isAr ? "رفض" : "Reject"}
+                              </button>
+                            </>
+                          )}
+                          {uni.status === "active" && (
+                            <button onClick={() => handleUniAction(uni.id, "suspend")} disabled={actionId === uni.id} style={{ background: isDark ? "#1e293b" : "#f1f5f9", color: textMuted, border: `1px solid ${border}`, borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontFamily: font }}>
+                              {isAr ? "إيقاف" : "Suspend"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {tab === "ai" && settings && (

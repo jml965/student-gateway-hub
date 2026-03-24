@@ -5,7 +5,7 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 export interface AuthRequest extends Request {
-  user?: { id: number; role: string; email: string; name: string };
+  user?: { id: number; role: string; email: string; name: string; universityId?: number | null };
 }
 
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
@@ -35,12 +35,21 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     .where(eq(usersTable.id, payload.userId))
     .limit(1);
 
-  if (!user || user.status !== "active") {
-    res.status(401).json({ error: "unauthorized", message: "User not found or suspended" });
+  if (!user) {
+    res.status(401).json({ error: "unauthorized", message: "User not found" });
+    return;
+  }
+  // Allow pending university users to access their portal while awaiting approval
+  if (user.status === "suspended") {
+    res.status(401).json({ error: "suspended", message: "Account suspended" });
+    return;
+  }
+  if (user.status !== "active" && user.role !== "university") {
+    res.status(401).json({ error: "unauthorized", message: "Account not yet active" });
     return;
   }
 
-  req.user = { id: user.id, role: user.role, email: user.email, name: user.name };
+  req.user = { id: user.id, role: user.role, email: user.email, name: user.name, universityId: user.universityId };
   next();
 }
 

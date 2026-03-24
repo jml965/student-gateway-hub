@@ -56,7 +56,7 @@ Full-stack AI-powered university registration platform. pnpm workspace monorepo 
 ├── lib/
 │   ├── db/
 │   │   └── src/schema/
-│   │       ├── users.ts         # users table (id, name, email, passwordHash, role, status)
+│   │       ├── users.ts         # users table (id, name, email, passwordHash, role[student/admin/university], status, universityId)
 │   │       ├── sessions.ts      # sessions table
 │   │       ├── password-resets.ts
 │   │       ├── universities.ts  # universities (name, country, type, rank, logo)
@@ -91,10 +91,39 @@ Full-stack AI-powered university registration platform. pnpm workspace monorepo 
 - `POST /sessions/:id/send` — send message → SSE streaming response
 
 ### Admin (`/api/admin`) — admin role required
-- `GET /stats` — total users, sessions, messages, applications
+- `GET /stats` — total users, sessions, messages, applications, documents, universities
 - `GET /ai-settings` — get AI model config + hasApiKey status
 - `PUT /ai-settings` — update model/systemPrompt/temperature/maxTokens/typingSpeedMs
 - `GET /users` — list all users
+- `GET /students` — CRM: list students with doc/app counts (q, country, status, page)
+- `GET /students/:id` — student detail with docs + applications
+- `GET /documents` — list all documents (type, verified filters)
+- `PATCH /documents/:id/verify` — verify or reject a document
+- `GET /universities` — list universities (status filter: pending/active/rejected/all)
+- `GET /universities/:id` — university detail with specs + contact user
+- `PATCH /universities/:id/approve` — approve pending university (activates user too)
+- `PATCH /universities/:id/reject` — reject university
+- `PATCH /universities/:id/suspend` — suspend active university
+
+### Universities (`/api/universities`) — public
+- `GET /` — search/filter (q, country, degree, minFee, maxFee, page)
+- `GET /countries` — distinct country list
+- `GET /:id` — university detail with specializations
+
+### University Portal (`/api/university-portal`)
+- `POST /register` — public: university self-registration (creates pending user + university)
+- `GET /profile` — get own profile + specializations (auth: university role)
+- `PUT /profile` — update profile info
+- `GET /specializations` — list own specializations
+- `POST /specializations` — add specialization (requires approved status)
+- `PUT /specializations/:id` — update specialization
+- `DELETE /specializations/:id` — delete specialization
+
+### Documents (`/api/documents`) — auth required (student)
+- `POST /request-upload` — get presigned GCS upload URL
+- `POST /` — save document metadata after upload
+- `GET /` — list own documents
+- `DELETE /:id` — delete own document
 
 ## Frontend Features
 
@@ -104,14 +133,24 @@ Full-stack AI-powered university registration platform. pnpm workspace monorepo 
 - **Mobile** — hamburger drawer, carousel service cards, top stats bar
 - **Real AI chat** — OpenAI SSE streaming at 20ms typing speed (configurable)
 - **Auth flows** — login, signup (with terms checkbox), forgot password
-- **Admin panel** — stats dashboard + AI settings (model, prompt, temp, speed)
+- **Admin panel** — stats, AI settings, student CRM, university approval workflow
 - **Referral page** — landing page with testimonial, stats, badges
+- **University Register page** — self-registration form with full bilingual support
+- **University Portal** — manage profile & specializations, approval status display
 
 ## Key Environment Variables
 
 - `DATABASE_URL` — PostgreSQL connection (auto-provided by Replit)
 - `OPENAI_API_KEY` — OpenAI API key for AI chat (set as Replit secret)
 - `JWT_SECRET` — JWT signing secret (defaults to dev secret; set in production)
+- `DEFAULT_OBJECT_STORAGE_BUCKET_ID` — GCS bucket for document uploads
+- `PRIVATE_OBJECT_DIR` — Private object storage directory prefix
+
+## Test Credentials
+
+- **Admin**: `admin@baansy.com` / `Admin@Baansy2024` (role: admin)
+- **Student**: register via `/signup`
+- **University**: register via `/university/register` → admin approves
 
 ## DB Commands
 
@@ -128,10 +167,10 @@ pnpm --filter @workspace/db run push-force  # Force push (destructive)
 ## Completed Tasks
 
 - ✅ Task #2 — DB schema (11 tables), Express backend (auth/chat/admin), React frontend (all pages)
+- ✅ Task #3 — 150 universities seeded (600 specializations), document upload API (GCS presigned URLs), admin CRM (students/documents/universities), university self-registration portal with admin approval workflow
 
 ## Upcoming Tasks
 
-- Task #3 — 150 university profiles, document upload, CRM
 - Task #4 — Application workflow, notifications, preliminary acceptance
 - Task #5 — Bank & electronic payment system
 - Task #6 — Advanced AI chat, integrated student services
