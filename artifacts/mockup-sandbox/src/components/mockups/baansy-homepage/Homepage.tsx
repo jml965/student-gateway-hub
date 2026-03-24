@@ -14,6 +14,8 @@ import {
   Globe,
   ChevronRight,
   ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   Send,
   MoreHorizontal,
   Building2,
@@ -187,8 +189,8 @@ export function Homepage() {
           }}
         >
           {sidebarOpen
-            ? <ChevronLeft size={15} />
-            : <ChevronRight size={15} />}
+            ? <PanelLeftClose size={15} />
+            : <PanelLeftOpen size={15} />}
         </button>
 
       {/* ─────────────── SIDEBAR ─────────────── */}
