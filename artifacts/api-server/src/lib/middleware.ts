@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "./auth";
-import { db, usersTable, sessionsTable } from "@workspace/db";
-import { eq, and, gt } from "drizzle-orm";
+import { sessionStore } from "./session-store";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 export interface AuthRequest extends Request {
   user?: { id: number; role: string; email: string; name: string };
@@ -21,20 +22,9 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     return;
   }
 
-  // Verify token exists in sessions table (not logged out, not expired)
-  const now = new Date();
-  const [session] = await db
-    .select()
-    .from(sessionsTable)
-    .where(
-      and(
-        eq(sessionsTable.token, rawToken),
-        gt(sessionsTable.expiresAt, now),
-      ),
-    )
-    .limit(1);
-
-  if (!session) {
+  // Verify session is active via Redis-backed session store (falls back to PostgreSQL)
+  const sessionUserId = await sessionStore.verify(rawToken);
+  if (!sessionUserId || sessionUserId !== payload.userId) {
     res.status(401).json({ error: "unauthorized", message: "Session expired or invalidated" });
     return;
   }

@@ -1,15 +1,12 @@
 import { Router } from "express";
-import { db, usersTable, passwordResetsTable, sessionsTable } from "@workspace/db";
+import { db, usersTable, passwordResetsTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { hashPassword, comparePassword, signToken, generateResetToken } from "../lib/auth";
+import { sessionStore } from "../lib/session-store";
 import { requireAuth, type AuthRequest } from "../lib/middleware";
 import { sendPasswordResetEmail } from "../lib/email";
 
 const router = Router();
-
-async function createSession(userId: number, token: string, expiresAt: Date) {
-  await db.insert(sessionsTable).values({ userId, token, expiresAt });
-}
 
 router.post("/register", async (req, res) => {
   const { name, email, password, phone, country } = req.body;
@@ -50,7 +47,7 @@ router.post("/register", async (req, res) => {
     .returning();
 
   const { token, expiresAt } = signToken({ userId: user.id, role: user.role });
-  await createSession(user.id, token, expiresAt);
+  await sessionStore.store(user.id, token, expiresAt);
 
   res.status(201).json({
     token,
@@ -98,7 +95,7 @@ router.post("/login", async (req, res) => {
   }
 
   const { token, expiresAt } = signToken({ userId: user.id, role: user.role });
-  await createSession(user.id, token, expiresAt);
+  await sessionStore.store(user.id, token, expiresAt);
 
   res.json({
     token,
@@ -118,7 +115,7 @@ router.post("/login", async (req, res) => {
 router.post("/logout", requireAuth, async (req: AuthRequest, res) => {
   const rawToken = req.headers.authorization?.slice(7) ?? "";
   if (rawToken) {
-    await db.delete(sessionsTable).where(eq(sessionsTable.token, rawToken));
+    await sessionStore.invalidate(rawToken, req.user!.id);
   }
   res.json({ success: true, message: "Logged out successfully" });
 });
@@ -148,17 +145,16 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
 });
 
 router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-
-  // Always return the same response to prevent email enumeration
+  // Respond immediately to prevent email enumeration timing attacks
   res.json({ success: true, message: "If that email exists, a reset link has been sent" });
 
+  const email = req.body?.email;
   if (!email?.trim()) return;
 
   const [user] = await db
     .select({ id: usersTable.id, email: usersTable.email })
     .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase()))
+    .where(eq(usersTable.email, String(email).toLowerCase()))
     .limit(1);
 
   if (!user) return;
@@ -167,14 +163,17 @@ router.post("/forgot-password", async (req, res) => {
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
   await db.insert(passwordResetsTable).values({ userId: user.id, token, expiresAt });
 
-  const frontendUrl = process.env.FRONTEND_URL || process.env.REPLIT_DEV_DOMAIN
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : "http://localhost:3000";
+  // Build frontend URL with correct precedence: FRONTEND_URL takes priority
+  const frontendUrl =
+    process.env.FRONTEND_URL ??
+    (process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "http://localhost:3000");
 
   const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
 
-  await sendPasswordResetEmail(user.email, resetUrl).catch((err) => {
-    req.log.error({ err, userId: user.id }, "Failed to send password reset email");
+  await sendPasswordResetEmail(user.email, resetUrl).catch((err: Error) => {
+    req.log.error({ err: err.message, userId: user.id }, "Failed to send password reset email");
   });
 });
 
@@ -208,8 +207,8 @@ router.post("/reset-password", async (req, res) => {
   await Promise.all([
     db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, reset.userId)),
     db.update(passwordResetsTable).set({ used: true }).where(eq(passwordResetsTable.id, reset.id)),
-    // Invalidate all existing sessions for security
-    db.delete(sessionsTable).where(eq(sessionsTable.userId, reset.userId)),
+    // Invalidate all active sessions for this user across Redis + DB
+    sessionStore.invalidateAll(reset.userId),
   ]);
 
   res.json({ success: true, message: "Password reset successfully" });
