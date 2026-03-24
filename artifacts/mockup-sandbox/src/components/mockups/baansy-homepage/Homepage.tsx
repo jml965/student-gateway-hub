@@ -18,9 +18,6 @@ import {
   PanelLeftOpen,
   Send,
   MoreHorizontal,
-  Building2,
-  Building,
-  Sparkles,
   Settings,
   LogOut,
   LogIn,
@@ -425,53 +422,6 @@ export function Homepage() {
           minWidth: 0,
         }}
       >
-        {/* Top bar */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "10px 16px",
-          borderBottom: `1px solid ${isDark ? "#1e293b" : "#e2e8f0"}`,
-          backgroundColor: isDark ? "#0d1117" : "#ffffff",
-          gap: 8,
-          flexShrink: 0,
-        }}>
-          {/* Left: assistant label */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Sparkles size={15} color={accentBlue} />
-            <span style={{ fontSize: 13, color: textMuted, fontWeight: 500, whiteSpace: "nowrap" }}>
-              {tx.assistantLabel}
-            </span>
-          </div>
-
-          {/* Right: stats badges */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 5,
-              backgroundColor: accentBlueSoft,
-              color: accentBlueText,
-              borderRadius: 20, padding: "4px 10px",
-              fontSize: 11, fontWeight: 600,
-              border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}`,
-              whiteSpace: "nowrap",
-            }}>
-              <Building size={11} />
-              {tx.stat1}
-            </div>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 5,
-              backgroundColor: accentBlueSoft,
-              color: accentBlueText,
-              borderRadius: 20, padding: "4px 10px",
-              fontSize: 11, fontWeight: 600,
-              border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}`,
-              whiteSpace: "nowrap",
-            }}>
-              <Building2 size={11} />
-              {tx.stat2}
-            </div>
-          </div>
-        </div>
 
         {/* Chat Content */}
         <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
