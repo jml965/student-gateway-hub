@@ -39,6 +39,15 @@ interface AppRecord {
 
 interface UniOption { id: number; nameEn: string; nameAr: string; }
 
+interface AppListRecord {
+  id: number; status: string; notes: string | null;
+  submittedAt: string | null; createdAt: string;
+  studentId: number; studentName: string | null; studentEmail: string;
+  studentCountry: string | null;
+  specNameEn: string; specNameAr: string; degree: string;
+  uniNameEn: string; uniNameAr: string;
+}
+
 const MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"];
 const DOC_TYPES: Record<string, { ar: string; en: string }> = {
   passport: { ar: "جواز سفر", en: "Passport" },
@@ -67,7 +76,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [localSettings, setLocalSettings] = useState<Partial<AiSettings>>({});
-  const [tab, setTab] = useState<"stats" | "ai" | "universities" | "students">("stats");
+  const [tab, setTab] = useState<"stats" | "ai" | "universities" | "students" | "applications">("stats");
 
   // University CRM
   const [unis, setUnis] = useState<University[]>([]);
@@ -90,6 +99,17 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [countries, setCountries] = useState<string[]>([]);
   const [uniOptions, setUniOptions] = useState<UniOption[]>([]);
 
+  // Applications CRM
+  const [appList, setAppList] = useState<AppListRecord[]>([]);
+  const [appLoading, setAppLoading] = useState(false);
+  const [appStatusFilter, setAppStatusFilter] = useState("");
+  const [appUniFilter, setAppUniFilter] = useState("");
+  const [appCountryFilter, setAppCountryFilter] = useState("");
+  const [appQ, setAppQ] = useState("");
+  const [appPage, setAppPage] = useState(1);
+  const [appHasMore, setAppHasMore] = useState(false);
+  const [updatingAppId, setUpdatingAppId] = useState<number | null>(null);
+
   useEffect(() => {
     if (!user || user.role !== "admin") { navigate("home"); return; }
     loadData();
@@ -105,6 +125,10 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   useEffect(() => {
     if (tab === "students") loadStudents(true);
   }, [tab, studentQ, studentStatus, studentCountry, studentUniversityId]);
+
+  useEffect(() => {
+    if (tab === "applications") loadApplications(true);
+  }, [tab, appStatusFilter, appUniFilter, appCountryFilter, appQ]);
 
   const loadData = async () => {
     try {
@@ -207,6 +231,30 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
     } catch { } finally { setVerifyingDoc(null); }
   };
 
+  const loadApplications = async (reset = false, pageOverride?: number) => {
+    setAppLoading(true);
+    try {
+      const p = reset ? 1 : (pageOverride ?? appPage);
+      const params = new URLSearchParams({ page: String(p), limit: "20" });
+      if (appStatusFilter) params.set("status", appStatusFilter);
+      if (appUniFilter) params.set("universityId", appUniFilter);
+      if (appCountryFilter) params.set("country", appCountryFilter);
+      if (appQ) params.set("q", appQ);
+      const res = await api.get<{ data: AppListRecord[]; hasMore: boolean }>(`/admin/applications?${params}`);
+      if (reset) { setAppList(res.data); setAppPage(1); }
+      else { setAppList(prev => [...prev, ...res.data]); }
+      setAppHasMore(res.hasMore);
+    } catch { } finally { setAppLoading(false); }
+  };
+
+  const handleUpdateAppStatus = async (appId: number, status: string) => {
+    setUpdatingAppId(appId);
+    try {
+      await api.patch(`/admin/applications/${appId}/status`, { status });
+      setAppList(prev => prev.map(a => a.id === appId ? { ...a, status } : a));
+    } catch { } finally { setUpdatingAppId(null); }
+  };
+
   const save = async () => {
     setSaving(true);
     try {
@@ -252,6 +300,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
           {[
             { id: "stats", icon: BarChart, label: isAr ? "الإحصائيات" : "Statistics" },
             { id: "students", icon: Users, label: isAr ? "إدارة الطلاب" : "Students CRM" },
+            { id: "applications", icon: ChevL, label: isAr ? "الطلبات" : "Applications" },
             { id: "universities", icon: GraduationCap, label: isAr ? "الجامعات" : "Universities" },
             { id: "ai", icon: Gear, label: isAr ? "إعدادات الذكاء الاصطناعي" : "AI Settings" },
           ].map(t => (
@@ -499,6 +548,105 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
             )}
           </div>
         )}
+
+        {/* ─── Applications CRM ─── */}
+        {tab === "applications" && (() => {
+          const APP_STATUSES: Record<string, { ar: string; en: string; color: string }> = {
+            draft: { ar: "مسودة", en: "Draft", color: "#94a3b8" },
+            submitted: { ar: "مقدَّم", en: "Submitted", color: "#3b82f6" },
+            documents_pending: { ar: "وثائق ناقصة", en: "Docs Pending", color: "#f59e0b" },
+            under_review: { ar: "قيد المراجعة", en: "Under Review", color: "#8b5cf6" },
+            preliminary_accepted: { ar: "قبول مبدئي", en: "Pre-Accepted", color: "#0ea5e9" },
+            accepted: { ar: "مقبول", en: "Accepted", color: "#10b981" },
+            rejected: { ar: "مرفوض", en: "Rejected", color: "#ef4444" },
+            withdrawn: { ar: "مسحوب", en: "Withdrawn", color: "#64748b" },
+          };
+          const selStyle = { padding: "8px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font, cursor: "pointer" as const };
+          return (
+            <div>
+              {/* Filters */}
+              <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                <input
+                  style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font, flex: "1 1 180px" }}
+                  placeholder={isAr ? "ابحث باسم الطالب..." : "Search by student name..."}
+                  value={appQ}
+                  onChange={e => { setAppQ(e.target.value); setAppPage(1); }}
+                />
+                <select value={appStatusFilter} onChange={e => { setAppStatusFilter(e.target.value); setAppPage(1); }} style={selStyle}>
+                  <option value="">{isAr ? "جميع الحالات" : "All Statuses"}</option>
+                  {Object.entries(APP_STATUSES).map(([k, v]) => (
+                    <option key={k} value={k}>{isAr ? v.ar : v.en}</option>
+                  ))}
+                </select>
+                <select value={appUniFilter} onChange={e => { setAppUniFilter(e.target.value); setAppPage(1); }} style={selStyle}>
+                  <option value="">{isAr ? "جميع الجامعات" : "All Universities"}</option>
+                  {uniOptions.map(u => <option key={u.id} value={u.id}>{isAr ? u.nameAr : u.nameEn}</option>)}
+                </select>
+                <select value={appCountryFilter} onChange={e => { setAppCountryFilter(e.target.value); setAppPage(1); }} style={selStyle}>
+                  <option value="">{isAr ? "جميع الجنسيات" : "All Nationalities"}</option>
+                  {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {(appStatusFilter || appUniFilter || appCountryFilter || appQ) && (
+                  <button onClick={() => { setAppStatusFilter(""); setAppUniFilter(""); setAppCountryFilter(""); setAppQ(""); }} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${border}`, background: "transparent", color: textMuted, cursor: "pointer", fontSize: 12, fontFamily: font }}>
+                    {isAr ? "إعادة تعيين" : "Clear Filters"}
+                  </button>
+                )}
+              </div>
+
+              {/* Application rows */}
+              {appLoading && appList.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
+              ) : appList.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "لا توجد طلبات" : "No applications found"}</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {appList.map(app => {
+                    const st = APP_STATUSES[app.status] ?? { ar: app.status, en: app.status, color: "#94a3b8" };
+                    return (
+                      <div key={app.id} style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: "14px 18px", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+                        <div style={{ flex: "1 1 200px" }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: textMain }}>{app.studentName || app.studentEmail}</div>
+                          <div style={{ fontSize: 12, color: textMuted }}>{app.studentEmail}{app.studentCountry ? ` · ${app.studentCountry}` : ""}</div>
+                        </div>
+                        <div style={{ flex: "1 1 200px" }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: textMain }}>{isAr ? app.uniNameAr : app.uniNameEn}</div>
+                          <div style={{ fontSize: 12, color: textMuted }}>{isAr ? app.specNameAr : app.specNameEn} · {app.degree}</div>
+                        </div>
+                        <div style={{ flex: "0 0 auto", fontSize: 11, color: "#fff", background: st.color, padding: "3px 10px", borderRadius: 20, fontWeight: 700 }}>
+                          {isAr ? st.ar : st.en}
+                        </div>
+                        <div style={{ flex: "0 0 auto" }}>
+                          <select
+                            value={app.status}
+                            disabled={updatingAppId === app.id}
+                            onChange={e => handleUpdateAppStatus(app.id, e.target.value)}
+                            style={{ ...selStyle, fontSize: 12, padding: "5px 10px" }}
+                          >
+                            {Object.entries(APP_STATUSES).map(([k, v]) => (
+                              <option key={k} value={k}>{isAr ? v.ar : v.en}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div style={{ fontSize: 11, color: textMuted, flex: "0 0 auto" }}>
+                          {new Date(app.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {appHasMore && (
+                    <button
+                      onClick={() => { const next = appPage + 1; setAppPage(next); loadApplications(false, next); }}
+                      disabled={appLoading}
+                      style={{ padding: "10px 24px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600, alignSelf: "center", marginTop: 8 }}
+                    >
+                      {isAr ? "تحميل المزيد" : "Load More"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ─── Universities ─── */}
         {tab === "universities" && (

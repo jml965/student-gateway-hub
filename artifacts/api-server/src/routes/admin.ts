@@ -252,6 +252,69 @@ router.get("/users", async (_req, res) => {
   res.json(users);
 });
 
+// ─── Applications CRM ─────────────────────────────────────────────────────────
+router.get("/applications", async (req, res) => {
+  const { status, universityId, country, q, page = "1", limit = "20" } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, parseInt(page));
+  const pageSize = Math.min(50, Math.max(1, parseInt(limit)));
+
+  const conditions: SQL[] = [];
+  if (status) conditions.push(eq(applicationsTable.status, status as typeof applicationsTable.$inferSelect["status"]));
+  if (universityId) conditions.push(eq(universitiesTable.id, parseInt(universityId)));
+  if (country) conditions.push(eq(usersTable.country, country));
+  if (q) conditions.push(ilike(usersTable.name, `%${q}%`));
+
+  const rows = await db
+    .select({
+      id: applicationsTable.id,
+      status: applicationsTable.status,
+      notes: applicationsTable.notes,
+      submittedAt: applicationsTable.submittedAt,
+      createdAt: applicationsTable.createdAt,
+      studentId: usersTable.id,
+      studentName: usersTable.name,
+      studentEmail: usersTable.email,
+      studentCountry: usersTable.country,
+      specNameEn: specializationsTable.nameEn,
+      specNameAr: specializationsTable.nameAr,
+      degree: specializationsTable.degree,
+      uniNameEn: universitiesTable.nameEn,
+      uniNameAr: universitiesTable.nameAr,
+    })
+    .from(applicationsTable)
+    .innerJoin(usersTable, eq(applicationsTable.studentId, usersTable.id))
+    .innerJoin(specializationsTable, eq(applicationsTable.specializationId, specializationsTable.id))
+    .innerJoin(universitiesTable, eq(specializationsTable.universityId, universitiesTable.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(applicationsTable.createdAt))
+    .limit(pageSize + 1)
+    .offset((pageNum - 1) * pageSize);
+
+  const hasMore = rows.length > pageSize;
+  res.json({ data: rows.slice(0, pageSize), page: pageNum, pageSize, hasMore });
+});
+
+router.patch("/applications/:id/status", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "invalid_id" }); return; }
+
+  const validStatuses = ["draft", "submitted", "documents_pending", "under_review", "preliminary_accepted", "accepted", "rejected", "withdrawn"] as const;
+  const { status } = req.body as { status?: string };
+  if (!status || !validStatuses.includes(status as typeof validStatuses[number])) {
+    res.status(400).json({ error: "invalid_status" });
+    return;
+  }
+
+  const [app] = await db
+    .update(applicationsTable)
+    .set({ status: status as typeof validStatuses[number] })
+    .where(eq(applicationsTable.id, id))
+    .returning();
+
+  if (!app) { res.status(404).json({ error: "not_found" }); return; }
+  res.json(app);
+});
+
 // ─── University Approval CRM ──────────────────────────────────────────────────
 router.get("/universities", async (req, res) => {
   const { status, q, page = "1", limit = "30" } = req.query as Record<string, string>;
