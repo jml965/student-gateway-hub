@@ -1,8 +1,20 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 
-const JWT_SECRET = process.env.JWT_SECRET || "baansy-dev-secret-change-in-production";
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("JWT_SECRET environment variable is required in production");
+    }
+    return "baansy-dev-secret-do-not-use-in-production";
+  }
+  return secret;
+}
+
 const JWT_EXPIRES_IN = "30d";
+const JWT_EXPIRES_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
@@ -12,23 +24,22 @@ export function comparePassword(password: string, hash: string): Promise<boolean
   return bcrypt.compare(password, hash);
 }
 
-export function signToken(payload: { userId: number; role: string }): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+export function signToken(payload: { userId: number; role: string }): { token: string; expiresAt: Date } {
+  const secret = getJwtSecret();
+  const token = jwt.sign(payload, secret, { expiresIn: JWT_EXPIRES_IN });
+  const expiresAt = new Date(Date.now() + JWT_EXPIRES_MS);
+  return { token, expiresAt };
 }
 
 export function verifyToken(token: string): { userId: number; role: string } | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: number; role: string };
+    const secret = getJwtSecret();
+    return jwt.verify(token, secret) as { userId: number; role: string };
   } catch {
     return null;
   }
 }
 
 export function generateResetToken(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let token = "";
-  for (let i = 0; i < 64; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return randomBytes(48).toString("hex");
 }

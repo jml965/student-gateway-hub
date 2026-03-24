@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "./auth";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, sessionsTable } from "@workspace/db";
+import { eq, and, gt } from "drizzle-orm";
 
 export interface AuthRequest extends Request {
   user?: { id: number; role: string; email: string; name: string };
@@ -14,14 +14,37 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     return;
   }
 
-  const token = authHeader.slice(7);
-  const payload = verifyToken(token);
+  const rawToken = authHeader.slice(7);
+  const payload = verifyToken(rawToken);
   if (!payload) {
     res.status(401).json({ error: "unauthorized", message: "Invalid or expired token" });
     return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, payload.userId)).limit(1);
+  // Verify token exists in sessions table (not logged out, not expired)
+  const now = new Date();
+  const [session] = await db
+    .select()
+    .from(sessionsTable)
+    .where(
+      and(
+        eq(sessionsTable.token, rawToken),
+        gt(sessionsTable.expiresAt, now),
+      ),
+    )
+    .limit(1);
+
+  if (!session) {
+    res.status(401).json({ error: "unauthorized", message: "Session expired or invalidated" });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, payload.userId))
+    .limit(1);
+
   if (!user || user.status !== "active") {
     res.status(401).json({ error: "unauthorized", message: "User not found or suspended" });
     return;

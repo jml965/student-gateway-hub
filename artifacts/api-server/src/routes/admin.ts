@@ -1,5 +1,12 @@
 import { Router } from "express";
-import { db, usersTable, chatSessionsTable, chatMessagesTable, applicationsTable, aiSettingsTable } from "@workspace/db";
+import {
+  db,
+  usersTable,
+  chatSessionsTable,
+  chatMessagesTable,
+  applicationsTable,
+  aiSettingsTable,
+} from "@workspace/db";
 import { count, eq } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/middleware";
 
@@ -43,20 +50,25 @@ router.get("/ai-settings", async (_req, res) => {
 router.put("/ai-settings", async (req: AuthRequest, res) => {
   const { model, systemPrompt, temperature, maxTokens, typingSpeedMs } = req.body;
 
-  const [existing] = await db.select().from(aiSettingsTable).limit(1);
+  const [existing] = await db.select({ id: aiSettingsTable.id }).from(aiSettingsTable).limit(1);
 
-  const updates: Record<string, unknown> = {};
-  if (model !== undefined) updates.model = model;
-  if (systemPrompt !== undefined) updates.systemPrompt = systemPrompt;
-  if (temperature !== undefined) updates.temperature = temperature;
-  if (maxTokens !== undefined) updates.maxTokens = maxTokens;
-  if (typingSpeedMs !== undefined) updates.typingSpeedMs = typingSpeedMs;
+  type AiUpdate = Partial<typeof aiSettingsTable.$inferInsert>;
+  const updates: AiUpdate = {};
+  if (model !== undefined) updates.model = String(model);
+  if (systemPrompt !== undefined) updates.systemPrompt = String(systemPrompt);
+  if (temperature !== undefined) updates.temperature = Number(temperature);
+  if (maxTokens !== undefined) updates.maxTokens = Number(maxTokens);
+  if (typingSpeedMs !== undefined) updates.typingSpeedMs = Number(typingSpeedMs);
 
   let settings;
   if (existing) {
-    [settings] = await db.update(aiSettingsTable).set(updates).where(eq(aiSettingsTable.id, existing.id)).returning();
+    [settings] = await db
+      .update(aiSettingsTable)
+      .set(updates)
+      .where(eq(aiSettingsTable.id, existing.id))
+      .returning();
   } else {
-    [settings] = await db.insert(aiSettingsTable).values(updates as any).returning();
+    [settings] = await db.insert(aiSettingsTable).values({}).returning();
   }
 
   res.json({
@@ -70,15 +82,18 @@ router.put("/ai-settings", async (req: AuthRequest, res) => {
 });
 
 router.get("/users", async (_req, res) => {
-  const users = await db.select({
-    id: usersTable.id,
-    name: usersTable.name,
-    email: usersTable.email,
-    role: usersTable.role,
-    status: usersTable.status,
-    country: usersTable.country,
-    createdAt: usersTable.createdAt,
-  }).from(usersTable).limit(100);
+  const users = await db
+    .select({
+      id: usersTable.id,
+      name: usersTable.name,
+      email: usersTable.email,
+      role: usersTable.role,
+      status: usersTable.status,
+      country: usersTable.country,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable)
+    .limit(100);
   res.json(users);
 });
 

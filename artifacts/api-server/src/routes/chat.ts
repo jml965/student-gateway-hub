@@ -8,46 +8,63 @@ const router = Router();
 router.use(requireAuth);
 
 router.get("/sessions", async (req: AuthRequest, res) => {
-  const sessions = await db.select().from(chatSessionsTable)
+  const sessions = await db
+    .select()
+    .from(chatSessionsTable)
     .where(eq(chatSessionsTable.userId, req.user!.id))
     .orderBy(asc(chatSessionsTable.createdAt));
   res.json(sessions);
 });
 
 router.post("/sessions", async (req: AuthRequest, res) => {
-  const [session] = await db.insert(chatSessionsTable)
+  const [session] = await db
+    .insert(chatSessionsTable)
     .values({ userId: req.user!.id, title: null })
     .returning();
   res.status(201).json(session);
 });
 
 router.get("/sessions/:sessionId/messages", async (req: AuthRequest, res) => {
-  const sessionId = parseInt(req.params.sessionId);
-  const [session] = await db.select().from(chatSessionsTable)
-    .where(eq(chatSessionsTable.id, sessionId)).limit(1);
+  const sessionId = parseInt(req.params.sessionId, 10);
+  if (isNaN(sessionId)) {
+    res.status(400).json({ error: "invalid_request", message: "Invalid session ID" });
+    return;
+  }
+
+  const [session] = await db
+    .select()
+    .from(chatSessionsTable)
+    .where(eq(chatSessionsTable.id, sessionId))
+    .limit(1);
 
   if (!session || session.userId !== req.user!.id) {
     res.status(404).json({ error: "not_found", message: "Session not found" });
     return;
   }
 
-  const messages = await db.select().from(chatMessagesTable)
+  const messages = await db
+    .select()
+    .from(chatMessagesTable)
     .where(eq(chatMessagesTable.sessionId, sessionId))
     .orderBy(asc(chatMessagesTable.createdAt));
+
   res.json(messages);
 });
 
 router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
-  const sessionId = parseInt(req.params.sessionId);
+  const sessionId = parseInt(req.params.sessionId, 10);
   const { content } = req.body;
 
-  if (!content?.trim()) {
-    res.status(422).json({ error: "validation_error", message: "Message content is required" });
+  if (isNaN(sessionId) || !content?.trim()) {
+    res.status(422).json({ error: "validation_error", message: "Valid session ID and message content required" });
     return;
   }
 
-  const [session] = await db.select().from(chatSessionsTable)
-    .where(eq(chatSessionsTable.id, sessionId)).limit(1);
+  const [session] = await db
+    .select()
+    .from(chatSessionsTable)
+    .where(eq(chatSessionsTable.id, sessionId))
+    .limit(1);
 
   if (!session || session.userId !== req.user!.id) {
     res.status(404).json({ error: "not_found", message: "Session not found" });
@@ -61,9 +78,10 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
   });
 
   const [settings] = await db.select().from(aiSettingsTable).limit(1);
-  const aiSettings = settings || {
+  const aiSettings = settings ?? {
     model: "gpt-4o-mini",
-    systemPrompt: "أنت مساعد Baansy الذكي. تساعد الطلاب في التسجيل الجامعي. ردودك قصيرة وبشرية وواضحة.",
+    systemPrompt:
+      "أنت مساعد Baansy الذكي. تساعد الطلاب في التسجيل الجامعي. ردودك قصيرة وبشرية وواضحة.",
     temperature: 0.7,
     maxTokens: 500,
     typingSpeedMs: 20,
@@ -82,20 +100,22 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  const prevMessages = await db.select().from(chatMessagesTable)
+  const prevMessages = await db
+    .select()
+    .from(chatMessagesTable)
     .where(eq(chatMessagesTable.sessionId, sessionId))
     .orderBy(asc(chatMessagesTable.createdAt));
 
   const messages = [
-    { role: "system", content: aiSettings.systemPrompt },
-    ...prevMessages.map((m) => ({ role: m.role, content: m.content })),
+    { role: "system" as const, content: aiSettings.systemPrompt },
+    ...prevMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
   ];
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -108,46 +128,66 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
     });
 
     if (!response.ok || !response.body) {
-      const error = await response.text();
-      req.log.error({ error }, "OpenAI API error");
-      const errMsg = "خطأ في الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى.";
+      const errorText = await response.text();
+      req.log.error({ status: response.status }, "OpenAI API error");
+      const errMsg =
+        response.status === 429
+          ? "تجاوزت حد الاستخدام. حاول مرة أخرى لاحقاً."
+          : "خطأ في الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى.";
+      void errorText; // consumed for logging purposes only — not surfaced to client
       res.write(`data: ${JSON.stringify({ content: errMsg, done: true })}\n\n`);
       res.end();
       return;
     }
 
     let fullContent = "";
+    const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let remainder = "";
 
-    for await (const chunk of response.body as any) {
-      const text = decoder.decode(chunk, { stream: true });
-      const lines = text.split("\n").filter((l) => l.startsWith("data: "));
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = (remainder + chunk).split("\n");
+      remainder = lines.pop() ?? "";
 
       for (const line of lines) {
-        const data = line.slice(6);
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6).trim();
         if (data === "[DONE]") {
           res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
           continue;
         }
         try {
-          const parsed = JSON.parse(data);
+          const parsed = JSON.parse(data) as {
+            choices?: Array<{ delta?: { content?: string } }>;
+          };
           const delta = parsed.choices?.[0]?.delta?.content;
           if (delta) {
             fullContent += delta;
             res.write(`data: ${JSON.stringify({ content: delta, done: false })}\n\n`);
           }
         } catch {
-          // skip malformed chunks
+          // skip malformed SSE chunks
         }
       }
     }
 
     if (fullContent) {
-      await db.insert(chatMessagesTable).values({ sessionId, role: "assistant", content: fullContent });
+      await db.insert(chatMessagesTable).values({
+        sessionId,
+        role: "assistant",
+        content: fullContent,
+      });
 
       if (!session.title && prevMessages.length <= 2) {
         const title = content.trim().slice(0, 50);
-        await db.update(chatSessionsTable).set({ title }).where(eq(chatSessionsTable.id, sessionId));
+        await db
+          .update(chatSessionsTable)
+          .set({ title })
+          .where(eq(chatSessionsTable.id, sessionId));
       }
     }
 
