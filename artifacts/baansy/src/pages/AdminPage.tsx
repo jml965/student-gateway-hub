@@ -134,10 +134,10 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
     } catch { } finally { setActionId(null); }
   };
 
-  const loadStudents = async (reset = false) => {
+  const loadStudents = async (reset = false, pageOverride?: number) => {
     setStudentLoading(true);
     try {
-      const p = reset ? 1 : studentPage;
+      const p = reset ? 1 : (pageOverride ?? studentPage);
       const params = new URLSearchParams({ page: String(p), limit: "20" });
       if (studentQ) params.set("q", studentQ);
       if (studentStatus) params.set("status", studentStatus);
@@ -357,7 +357,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
                 )}
                 {studentHasMore && (
                   <button
-                    onClick={() => { setStudentPage(p => p + 1); loadStudents(false); }}
+                    onClick={() => { const next = studentPage + 1; setStudentPage(next); loadStudents(false, next); }}
                     disabled={studentLoading}
                     style={{ padding: "10px 24px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600 }}
                   >

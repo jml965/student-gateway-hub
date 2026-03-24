@@ -261,7 +261,7 @@ router.get("/universities", async (req, res) => {
   const conditions: SQL[] = [];
   if (status) conditions.push(eq(universitiesTable.status, status as typeof universitiesTable.$inferSelect["status"]));
   if (q) conditions.push(
-    eq(universitiesTable.nameEn, q)
+    ilike(universitiesTable.nameEn, `%${q}%`)
   );
 
   const unis = await db
