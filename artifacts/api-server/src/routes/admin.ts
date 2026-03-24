@@ -10,7 +10,7 @@ import {
   universitiesTable,
   specializationsTable,
 } from "@workspace/db";
-import { count, eq, ilike, and, desc, SQL } from "drizzle-orm";
+import { count, eq, ilike, and, desc, SQL, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/middleware";
 
 const router = Router();
@@ -83,7 +83,7 @@ router.put("/ai-settings", async (req: AuthRequest, res) => {
 
 // CRM: list students with document + application counts
 router.get("/students", async (req, res) => {
-  const { q, country, status = "", page = "1", limit = "20" } = req.query as Record<string, string>;
+  const { q, country, status = "", universityId, page = "1", limit = "20" } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const pageSize = Math.min(100, Math.max(1, parseInt(limit)));
 
@@ -91,6 +91,34 @@ router.get("/students", async (req, res) => {
   if (q) conditions.push(ilike(usersTable.name, `%${q}%`));
   if (country) conditions.push(eq(usersTable.country, country));
   if (status) conditions.push(eq(usersTable.status, status as "active" | "suspended"));
+
+  // Filter by university: find student IDs that have applied to a spec in that university
+  if (universityId) {
+    const uniId = parseInt(universityId);
+    if (!isNaN(uniId)) {
+      const specs = await db
+        .select({ id: specializationsTable.id })
+        .from(specializationsTable)
+        .where(eq(specializationsTable.universityId, uniId));
+      const specIds = specs.map(s => s.id);
+      if (specIds.length > 0) {
+        const apps = await db
+          .select({ studentId: applicationsTable.studentId })
+          .from(applicationsTable)
+          .where(inArray(applicationsTable.specializationId, specIds));
+        const studentIds = [...new Set(apps.map(a => a.studentId))];
+        if (studentIds.length > 0) {
+          conditions.push(inArray(usersTable.id, studentIds));
+        } else {
+          res.json({ data: [], page: pageNum, pageSize, hasMore: false });
+          return;
+        }
+      } else {
+        res.json({ data: [], page: pageNum, pageSize, hasMore: false });
+        return;
+      }
+    }
+  }
 
   const students = await db
     .select({
@@ -144,9 +172,26 @@ router.get("/students/:id", async (req, res) => {
 
   if (!student) { res.status(404).json({ error: "not_found" }); return; }
 
-  const [docs, apps] = await Promise.all([
+  const [docs, appRows] = await Promise.all([
     db.select().from(documentsTable).where(eq(documentsTable.userId, id)).orderBy(desc(documentsTable.uploadedAt)),
-    db.select().from(applicationsTable).where(eq(applicationsTable.studentId, id)).orderBy(desc(applicationsTable.createdAt)),
+    db.select({
+      id: applicationsTable.id,
+      specializationId: applicationsTable.specializationId,
+      status: applicationsTable.status,
+      notes: applicationsTable.notes,
+      submittedAt: applicationsTable.submittedAt,
+      createdAt: applicationsTable.createdAt,
+      specNameEn: specializationsTable.nameEn,
+      specNameAr: specializationsTable.nameAr,
+      degree: specializationsTable.degree,
+      uniNameEn: universitiesTable.nameEn,
+      uniNameAr: universitiesTable.nameAr,
+    })
+      .from(applicationsTable)
+      .innerJoin(specializationsTable, eq(applicationsTable.specializationId, specializationsTable.id))
+      .innerJoin(universitiesTable, eq(specializationsTable.universityId, universitiesTable.id))
+      .where(eq(applicationsTable.studentId, id))
+      .orderBy(desc(applicationsTable.createdAt)),
   ]);
 
   res.json({
@@ -158,7 +203,7 @@ router.get("/students/:id", async (req, res) => {
     status: student.status,
     createdAt: student.createdAt,
     documents: docs,
-    applications: apps,
+    applications: appRows,
   });
 });
 

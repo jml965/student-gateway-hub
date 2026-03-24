@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api } from "@/lib/api";
+import { api, API_URL } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { GraduationCap, BarChart, Gear, Key, Users, Save, ChevL, Check } from "@/components/icons";
 
@@ -29,6 +29,15 @@ interface DocRecord {
   fileUrl: string; mimeType: string | null; fileSizeBytes: number | null;
   verified: boolean; uploadedAt: string;
 }
+
+interface AppRecord {
+  id: number; specializationId: number; status: string; notes: string | null;
+  submittedAt: string | null; createdAt: string;
+  specNameEn: string; specNameAr: string; degree: string;
+  uniNameEn: string; uniNameAr: string;
+}
+
+interface UniOption { id: number; nameEn: string; nameAr: string; }
 
 const MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"];
 const DOC_TYPES: Record<string, { ar: string; en: string }> = {
@@ -71,15 +80,22 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [studentLoading, setStudentLoading] = useState(false);
   const [studentQ, setStudentQ] = useState("");
   const [studentStatus, setStudentStatus] = useState("");
+  const [studentCountry, setStudentCountry] = useState("");
+  const [studentUniversityId, setStudentUniversityId] = useState("");
   const [studentPage, setStudentPage] = useState(1);
   const [studentHasMore, setStudentHasMore] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<(Student & { documents: DocRecord[]; applications: unknown[] }) | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<(Student & { documents: DocRecord[]; applications: AppRecord[] }) | null>(null);
   const [studentDetailLoading, setStudentDetailLoading] = useState(false);
   const [verifyingDoc, setVerifyingDoc] = useState<number | null>(null);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [uniOptions, setUniOptions] = useState<UniOption[]>([]);
 
   useEffect(() => {
     if (!user || user.role !== "admin") { navigate("home"); return; }
     loadData();
+    // Load countries and universities for filters
+    fetch(`${API_URL}/universities/countries`).then(r => r.json()).then(setCountries).catch(() => {});
+    api.get<{ data: UniOption[] }>("/admin/universities?limit=200").then(r => setUniOptions(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -88,7 +104,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
 
   useEffect(() => {
     if (tab === "students") loadStudents(true);
-  }, [tab, studentQ, studentStatus]);
+  }, [tab, studentQ, studentStatus, studentCountry, studentUniversityId]);
 
   const loadData = async () => {
     try {
@@ -125,6 +141,8 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
       const params = new URLSearchParams({ page: String(p), limit: "20" });
       if (studentQ) params.set("q", studentQ);
       if (studentStatus) params.set("status", studentStatus);
+      if (studentCountry) params.set("country", studentCountry);
+      if (studentUniversityId) params.set("universityId", studentUniversityId);
       const res = await api.get<{ data: Student[]; hasMore: boolean }>(`/admin/students?${params}`);
       if (reset) {
         setStudents(res.data);
@@ -140,9 +158,18 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
     setStudentDetailLoading(true);
     setSelectedStudent({ ...student, documents: [], applications: [] });
     try {
-      const detail = await api.get<Student & { documents: DocRecord[]; applications: unknown[] }>(`/admin/students/${student.id}`);
+      const detail = await api.get<Student & { documents: DocRecord[]; applications: AppRecord[] }>(`/admin/students/${student.id}`);
       setSelectedStudent(detail);
     } catch { } finally { setStudentDetailLoading(false); }
+  };
+
+  const getDocDownloadUrl = (fileUrl: string) => {
+    // fileUrl is like /objects/uploads/uuid — convert to full API download URL
+    if (fileUrl.startsWith("/objects/")) {
+      const path = fileUrl.slice("/objects/".length);
+      return `${API_URL}/storage/objects/${path}`;
+    }
+    return fileUrl;
   };
 
   const handleVerifyDoc = async (docId: number, verified: boolean) => {
@@ -232,19 +259,23 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
               {/* Filters */}
               <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                 <input
-                  style={{ ...inputStyle, flex: "1 1 200px" }}
-                  placeholder={isAr ? "ابحث باسم الطالب..." : "Search by student name..."}
+                  style={{ ...inputStyle, flex: "1 1 180px" }}
+                  placeholder={isAr ? "ابحث باسم الطالب..." : "Search by name..."}
                   value={studentQ}
-                  onChange={e => { setStudentQ(e.target.value); }}
+                  onChange={e => setStudentQ(e.target.value)}
                 />
-                <select
-                  style={{ ...inputStyle, flex: "0 0 140px" }}
-                  value={studentStatus}
-                  onChange={e => setStudentStatus(e.target.value)}
-                >
+                <select style={{ ...inputStyle, flex: "0 0 130px" }} value={studentStatus} onChange={e => setStudentStatus(e.target.value)}>
                   <option value="">{isAr ? "كل الحالات" : "All Statuses"}</option>
                   <option value="active">{isAr ? "✅ نشط" : "✅ Active"}</option>
                   <option value="suspended">{isAr ? "🚫 موقوف" : "🚫 Suspended"}</option>
+                </select>
+                <select style={{ ...inputStyle, flex: "0 0 140px" }} value={studentCountry} onChange={e => setStudentCountry(e.target.value)}>
+                  <option value="">{isAr ? "كل الدول" : "All Countries"}</option>
+                  {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select style={{ ...inputStyle, flex: "1 1 180px" }} value={studentUniversityId} onChange={e => setStudentUniversityId(e.target.value)}>
+                  <option value="">{isAr ? "كل الجامعات" : "All Universities"}</option>
+                  {uniOptions.map(u => <option key={u.id} value={String(u.id)}>{isAr ? u.nameAr : u.nameEn}</option>)}
                 </select>
               </div>
 
@@ -364,6 +395,14 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
                             {new Date(doc.uploadedAt).toLocaleString()}
                           </div>
                           <div style={{ display: "flex", gap: 6 }}>
+                            <a
+                              href={getDocDownloadUrl(doc.fileUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ flex: 1, padding: "6px 0", background: isDark ? "#1e293b" : "#f1f5f9", color: "#2563eb", border: `1px solid ${border}`, borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: font, textAlign: "center", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                            >
+                              ⬇ {isAr ? "تحميل" : "Download"}
+                            </a>
                             {!isVerified && (
                               <button
                                 onClick={() => handleVerifyDoc(doc.id, true)}
@@ -387,6 +426,54 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
                       );
                     })}
                   </div>
+                )}
+
+                {/* Applications section */}
+                {!studentDetailLoading && (
+                  <>
+                    <div style={{ height: 1, background: border, marginTop: 20, marginBottom: 16 }} />
+                    <div style={{ fontWeight: 700, fontSize: 13, color: textMain, marginBottom: 10 }}>
+                      {isAr ? "الطلبات المقدَّمة" : "Applications"} ({selectedStudent.applications.length})
+                    </div>
+                    {selectedStudent.applications.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: 16, color: textMuted, fontSize: 13 }}>
+                        {isAr ? "لا توجد طلبات" : "No applications submitted"}
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {selectedStudent.applications.map(app => {
+                          const appStatusColors: Record<string, string> = {
+                            draft: "#6b7280", submitted: "#3b82f6", documents_pending: "#f59e0b",
+                            under_review: "#8b5cf6", preliminary_accepted: "#0891b2",
+                            accepted: "#10b981", rejected: "#ef4444", withdrawn: "#6b7280"
+                          };
+                          const appStatusLabels: Record<string, { ar: string; en: string }> = {
+                            draft: { ar: "مسودة", en: "Draft" },
+                            submitted: { ar: "مقدَّم", en: "Submitted" },
+                            documents_pending: { ar: "بانتظار الوثائق", en: "Docs Pending" },
+                            under_review: { ar: "قيد المراجعة", en: "Under Review" },
+                            preliminary_accepted: { ar: "قبول مبدئي", en: "Pre-accepted" },
+                            accepted: { ar: "مقبول", en: "Accepted" },
+                            rejected: { ar: "مرفوض", en: "Rejected" },
+                            withdrawn: { ar: "منسحب", en: "Withdrawn" },
+                          };
+                          const color = appStatusColors[app.status] ?? "#6b7280";
+                          return (
+                            <div key={app.id} style={{ background: isDark ? "#0f172a" : "#f8faff", border: `1px solid ${border}`, borderRadius: 10, padding: "10px 12px" }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: textMain }}>{isAr ? app.uniNameAr : app.uniNameEn}</div>
+                              <div style={{ fontSize: 11, color: textMuted, marginTop: 2 }}>{isAr ? app.specNameAr : app.specNameEn} · {app.degree}</div>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                                <span style={{ fontSize: 11, background: color + "20", color, padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>
+                                  {appStatusLabels[app.status]?.[lang] ?? app.status}
+                                </span>
+                                <span style={{ fontSize: 11, color: textMuted }}>{new Date(app.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

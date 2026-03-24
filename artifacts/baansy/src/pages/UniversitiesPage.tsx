@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, API_URL } from "@/lib/api";
 
+type Requirements = { minGpa?: number; english?: string; [key: string]: unknown };
+
 type Specialization = {
   id: number;
   nameEn: string;
@@ -9,6 +11,8 @@ type Specialization = {
   durationYears: number;
   tuitionFee: string;
   currency: string;
+  status: string;
+  requirementsJson: Requirements | null;
 };
 
 type University = {
@@ -423,19 +427,33 @@ export default function UniversitiesPage({ lang, theme, navigate }: Props) {
                 <p style={{ color: colors.muted, fontSize: 13 }}>{isAr ? "لا توجد تخصصات حالياً" : "No specializations listed"}</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {selected.specializations.map(s => (
+                  {selected.specializations.map(s => {
+                    const isOpen = s.status === "active";
+                    const req = s.requirementsJson;
+                    return (
                     <div key={s.id} style={{
                       background: colors.bg,
                       border: `1px solid ${colors.border}`,
                       borderRadius: 10,
                       padding: 12,
+                      opacity: isOpen ? 1 : 0.65,
                     }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: colors.text }}>
-                            {isAr ? s.nameAr : s.nameEn}
-                          </p>
-                          <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: colors.text }}>
+                              {isAr ? s.nameAr : s.nameEn}
+                            </p>
+                            <span style={{
+                              fontSize: 10, padding: "2px 7px", borderRadius: 20, fontWeight: 700,
+                              background: isOpen ? "#d1fae520" : "#fee2e220",
+                              color: isOpen ? "#10b981" : "#ef4444",
+                              border: `1px solid ${isOpen ? "#10b98140" : "#ef444440"}`,
+                            }}>
+                              {isOpen ? (isAr ? "✓ مفتوح" : "✓ Open") : (isAr ? "✕ مغلق" : "✕ Closed")}
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
                             <span style={{
                               fontSize: 11, padding: "2px 8px", borderRadius: 20,
                               background: selectedDegreeColors[s.degree] + "22",
@@ -447,6 +465,20 @@ export default function UniversitiesPage({ lang, theme, navigate }: Props) {
                               {s.durationYears} {isAr ? "سنوات" : "yrs"}
                             </span>
                           </div>
+                          {req && (req.minGpa || req.english) && (
+                            <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              {req.minGpa && (
+                                <span style={{ fontSize: 10, background: isDark ? "#1e293b" : "#f8faff", color: colors.muted, border: `1px solid ${colors.border}`, padding: "2px 8px", borderRadius: 20 }}>
+                                  📊 {isAr ? "GPA" : "Min GPA"}: {req.minGpa}
+                                </span>
+                              )}
+                              {req.english && (
+                                <span style={{ fontSize: 10, background: isDark ? "#1e293b" : "#f8faff", color: colors.muted, border: `1px solid ${colors.border}`, padding: "2px 8px", borderRadius: 20 }}>
+                                  🌐 {req.english}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div style={{ textAlign: "end", flexShrink: 0 }}>
                           <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#10b981" }}>
@@ -456,7 +488,8 @@ export default function UniversitiesPage({ lang, theme, navigate }: Props) {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
