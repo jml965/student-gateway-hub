@@ -55,7 +55,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://travel.state.gov/content/travel/en/us-visas/study.html"
   },
   {
-    code: "CA", nameAr: "كندا", nameEen: "Canada",
+    code: "CA", nameAr: "كندا", nameEn: "Canada",
     visaRequired: true, visaType: "Study Permit",
     processingDays: "60-180", feesUSD: "150",
     documentsAr: ["جواز سفر ساري", "قبول من مؤسسة معتمدة DLI", "إثبات مالي", "شهادات دراسية", "فحص طبي (إن لزم)", "صور بيومترية"],
@@ -65,7 +65,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada.html"
   },
   {
-    code: "AU", nameAr: "أستراليا", nameEen: "Australia",
+    code: "AU", nameAr: "أستراليا", nameEn: "Australia",
     visaRequired: true, visaType: "Student Visa (500)",
     processingDays: "30-60", feesUSD: "650",
     documentsAr: ["جواز سفر ساري", "قبول جامعي CoE", "إثبات مالي", "تأمين صحي OSHC", "إجادة الإنجليزية (IELTS 6.0+)", "فحص طبي"],
@@ -75,7 +75,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/student-500"
   },
   {
-    code: "FR", nameAr: "فرنسا", nameEen: "France",
+    code: "FR", nameAr: "فرنسا", nameEn: "France",
     visaRequired: true, visaType: "student",
     processingDays: "15-45", feesUSD: "99",
     documentsAr: ["جواز سفر ساري", "قبول جامعي أو VLS-TS", "إثبات مالي (700 يورو/شهر)", "تأمين صحي", "وثيقة سكن", "صور شخصية"],
@@ -85,7 +85,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://france-visas.gouv.fr"
   },
   {
-    code: "ES", nameAr: "إسبانيا", nameEen: "Spain",
+    code: "ES", nameAr: "إسبانيا", nameEn: "Spain",
     visaRequired: true, visaType: "student",
     processingDays: "30-60", feesUSD: "80",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي (600 يورو/شهر)", "تأمين صحي شامل", "وثيقة سكن", "شهادات مترجمة ومصادق عليها"],
@@ -95,7 +95,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.exteriores.gob.es"
   },
   {
-    code: "IT", nameAr: "إيطاليا", nameEen: "Italy",
+    code: "IT", nameAr: "إيطاليا", nameEn: "Italy",
     visaRequired: true, visaType: "student",
     processingDays: "30-90", feesUSD: "116",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي (5,800 يورو/سنة)", "تأمين صحي", "وثيقة سكن", "صور شخصية"],
@@ -105,7 +105,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://vistoperitalia.esteri.it"
   },
   {
-    code: "NL", nameAr: "هولندا", nameEen: "Netherlands",
+    code: "NL", nameAr: "هولندا", nameEn: "Netherlands",
     visaRequired: true, visaType: "student",
     processingDays: "30-60", feesUSD: "192",
     documentsAr: ["جواز سفر ساري", "خطاب قبول جامعي", "إثبات مالي (1,400+ يورو/شهر)", "تأمين صحي", "تغطية سكن"],
@@ -115,7 +115,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://ind.nl/en/residence-permits/student"
   },
   {
-    code: "SE", nameAr: "السويد", nameEen: "Sweden",
+    code: "SE", nameAr: "السويد", nameEn: "Sweden",
     visaRequired: true, visaType: "student",
     processingDays: "30-90", feesUSD: "100",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي (8,650 SEK/شهر)", "تأمين صحي", "وثيقة سكن"],
@@ -125,7 +125,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.migrationsverket.se/en/Applying-for-a-permit/Studies.html"
   },
   {
-    code: "CZ", nameAr: "جمهورية التشيك", nameEen: "Czech Republic",
+    code: "CZ", nameAr: "جمهورية التشيك", nameEn: "Czech Republic",
     visaRequired: true, visaType: "student",
     processingDays: "30-60", feesUSD: "35",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي (11,000 CZK/شهر)", "تأمين صحي", "وثيقة سكن", "فحص طبي"],
@@ -135,7 +135,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.mzv.cz/jnp/en/information_for_aliens"
   },
   {
-    code: "HU", nameAr: "هنغاريا", nameEen: "Hungary",
+    code: "HU", nameAr: "هنغاريا", nameEn: "Hungary",
     visaRequired: true, visaType: "student",
     processingDays: "30-60", feesUSD: "50",
     documentsAr: ["جواز سفر ساري", "قبول جامعي أو منحة Stipendium Hungaricum", "إثبات مالي", "تأمين صحي", "وثيقة سكن", "فحص طبي"],
@@ -145,7 +145,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.stipendiumhungaricum.hu"
   },
   {
-    code: "PL", nameAr: "بولندا", nameEen: "Poland",
+    code: "PL", nameAr: "بولندا", nameEn: "Poland",
     visaRequired: true, visaType: "student",
     processingDays: "15-45", feesUSD: "35",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي (701 PLN/شهر على الأقل)", "تأمين صحي", "وثيقة سكن"],
@@ -155,7 +155,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.gov.pl/web/dyplomacja"
   },
   {
-    code: "RO", nameAr: "رومانيا", nameEen: "Romania",
+    code: "RO", nameAr: "رومانيا", nameEn: "Romania",
     visaRequired: true, visaType: "student",
     processingDays: "30-60", feesUSD: "120",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي", "تأمين صحي", "وثيقة سكن", "شهادات مترجمة ومصادق عليها"],
@@ -165,7 +165,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://mae.ro"
   },
   {
-    code: "MY", nameAr: "ماليزيا", nameEen: "Malaysia",
+    code: "MY", nameAr: "ماليزيا", nameEn: "Malaysia",
     visaRequired: true, visaType: "student pass",
     processingDays: "14-30", feesUSD: "60",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "كشف حساب بنكي", "فحص طبي", "صور شخصية", "شهادات دراسية"],
@@ -175,7 +175,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://educationmalaysia.gov.my"
   },
   {
-    code: "CN", nameAr: "الصين", nameEen: "China",
+    code: "CN", nameAr: "الصين", nameEn: "China",
     visaRequired: true, visaType: "X1/X2 Student",
     processingDays: "15-30", feesUSD: "140",
     documentsAr: ["جواز سفر ساري", "قبول جامعي (JW201/JW202)", "فحص طبي معتمد", "شهادة خلو سوابق", "صور شخصية", "كشف حساب بنكي"],
@@ -185,7 +185,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.csc.edu.cn/studyinchina"
   },
   {
-    code: "JP", nameAr: "اليابان", nameEen: "Japan",
+    code: "JP", nameAr: "اليابان", nameEn: "Japan",
     visaRequired: true, visaType: "student (留学)",
     processingDays: "30-60", feesUSD: "0",
     documentsAr: ["جواز سفر ساري", "COE (شهادة أهلية) من الهجرة اليابانية", "قبول جامعي", "إثبات مالي", "وثيقة سكن"],
@@ -195,7 +195,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.jasso.or.jp/en"
   },
   {
-    code: "KR", nameAr: "كوريا الجنوبية", nameEen: "South Korea",
+    code: "KR", nameAr: "كوريا الجنوبية", nameEn: "South Korea",
     visaRequired: true, visaType: "D-2 Student",
     processingDays: "14-30", feesUSD: "60",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي (10,000,000 KRW)", "صور شخصية", "شهادات دراسية"],
@@ -205,7 +205,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.studyinkorea.go.kr"
   },
   {
-    code: "RU", nameAr: "روسيا", nameEen: "Russia",
+    code: "RU", nameAr: "روسيا", nameEn: "Russia",
     visaRequired: true, visaType: "student",
     processingDays: "15-30", feesUSD: "35",
     documentsAr: ["جواز سفر ساري", "دعوة من الجامعة الروسية", "فحص طبي (HIV وأمراض أخرى)", "شهادات مترجمة معتمدة", "صور شخصية", "وثيقة تأمين صحي"],
@@ -215,7 +215,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://education-in-russia.com"
   },
   {
-    code: "UA", nameAr: "أوكرانيا", nameEen: "Ukraine",
+    code: "UA", nameAr: "أوكرانيا", nameEn: "Ukraine",
     visaRequired: true, visaType: "student",
     processingDays: "15-30", feesUSD: "65",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "كشف حساب بنكي", "فحص طبي", "شهادة خلو سوابق", "صور شخصية"],
@@ -225,7 +225,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://studyinukraine.gov.ua"
   },
   {
-    code: "JO", nameAr: "الأردن", nameEen: "Jordan",
+    code: "JO", nameAr: "الأردن", nameEn: "Jordan",
     visaRequired: false, visaType: "student",
     processingDays: "7-14", feesUSD: "20",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي", "شهادات دراسية", "فحص طبي"],
@@ -235,7 +235,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.mfa.gov.jo"
   },
   {
-    code: "EG", nameAr: "مصر", nameEen: "Egypt",
+    code: "EG", nameAr: "مصر", nameEn: "Egypt",
     visaRequired: false, visaType: "student",
     processingDays: "7-21", feesUSD: "25",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "كشف حساب بنكي", "صور شخصية", "شهادات دراسية"],
@@ -245,7 +245,7 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://mohe.gov.eg"
   },
   {
-    code: "MA", nameAr: "المغرب", nameEen: "Morocco",
+    code: "MA", nameAr: "المغرب", nameEn: "Morocco",
     visaRequired: false, visaType: "student",
     processingDays: "7-21", feesUSD: "30",
     documentsAr: ["جواز سفر ساري", "قبول جامعي أو مدرسة عليا", "إثبات مالي", "وثيقة سكن", "صور شخصية"],
@@ -255,63 +255,63 @@ export const VISA_DATA: VisaInfo[] = [
     officialLink: "https://www.fmre.ma"
   },
   {
-    code: "AE", nameAr: "الإمارات", nameEen: "UAE",
+    code: "AE", nameAr: "الإمارات", nameEn: "UAE",
     visaRequired: false, visaType: "student",
     processingDays: "5-14", feesUSD: "100",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي", "فحص طبي إلزامي", "تأمين صحي", "صور شخصية"],
     documentsEn: ["Valid passport", "University admission", "Financial proof", "Mandatory medical exam", "Health insurance", "Photos"],
     notesAr: "تصريح الإقامة الطلابية يُصدر من GDRFA. الفحص الطبي إلزامي. تكاليف المعيشة مرتفعة. جامعات دولية ذات جودة عالية.",
-    notesEen: "Student residence permit issued by GDRFA. Medical exam mandatory. High living costs. International quality universities.",
+    notesEn: "Student residence permit issued by GDRFA. Medical exam mandatory. High living costs. International quality universities.",
     officialLink: "https://www.gdrfad.gov.ae"
   },
   {
-    code: "LB", nameAr: "لبنان", nameEen: "Lebanon",
+    code: "LB", nameAr: "لبنان", nameEn: "Lebanon",
     visaRequired: false, visaType: "student",
     processingDays: "7-21", feesUSD: "17",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "كشف حساب بنكي", "وثيقة سكن", "صور شخصية"],
     documentsEn: ["Valid passport", "University admission", "Bank statement", "Accommodation", "Photos"],
     notesAr: "الجنسيات العربية معفاة من التأشيرة في الغالب. الوضع الاقتصادي يجب أخذه بعين الاعتبار. الجامعة الأمريكية في بيروت مشهورة عالمياً.",
-    notesEen: "Arab nationalities mostly visa-exempt. Economic situation must be considered. AUB is world-renowned.",
+    notesEn: "Arab nationalities mostly visa-exempt. Economic situation must be considered. AUB is world-renowned.",
     officialLink: "https://www.mehe.gov.lb"
   },
   {
-    code: "KZ", nameAr: "كازاخستان", nameEen: "Kazakhstan",
+    code: "KZ", nameAr: "كازاخستان", nameEn: "Kazakhstan",
     visaRequired: true, visaType: "student",
     processingDays: "15-30", feesUSD: "40",
     documentsAr: ["جواز سفر ساري", "دعوة من الجامعة", "كشف حساب بنكي", "فحص طبي", "شهادات دراسية", "صور شخصية"],
     documentsEn: ["Valid passport", "University invitation", "Bank statement", "Medical exam", "Academic certificates", "Photos"],
     notesAr: "وجهة متنامية للطلاب العرب. منح حكومية كازاخستانية متاحة. التدريس بالروسية أو الكازاخية أو الإنجليزية.",
-    notesEen: "Growing destination for Arab students. Kazakh government scholarships available. Teaching in Russian, Kazakh, or English.",
+    notesEn: "Growing destination for Arab students. Kazakh government scholarships available. Teaching in Russian, Kazakh, or English.",
     officialLink: "https://www.edu.gov.kz"
   },
   {
-    code: "BA", nameAr: "البوسنة والهرسك", nameEen: "Bosnia and Herzegovina",
+    code: "BA", nameAr: "البوسنة والهرسك", nameEn: "Bosnia and Herzegovina",
     visaRequired: true, visaType: "student",
     processingDays: "15-30", feesUSD: "25",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي", "تأمين صحي", "وثيقة سكن", "شهادات مترجمة"],
     documentsEn: ["Valid passport", "University admission", "Financial proof", "Health insurance", "Accommodation", "Translated certificates"],
     notesAr: "سراييفو وجهة شعبية للطلاب المسلمين. تكاليف منخفضة. برامج الطب والهندسة متاحة باللغة الإنجليزية.",
-    notesEen: "Sarajevo popular for Muslim students. Low costs. Medicine and engineering programs available in English.",
+    notesEn: "Sarajevo popular for Muslim students. Low costs. Medicine and engineering programs available in English.",
     officialLink: "https://www.mvp.gov.ba"
   },
   {
-    code: "CY", nameAr: "قبرص", nameEen: "Cyprus",
+    code: "CY", nameAr: "قبرص", nameEn: "Cyprus",
     visaRequired: true, visaType: "student",
     processingDays: "15-45", feesUSD: "70",
     documentsAr: ["جواز سفر ساري", "قبول جامعي", "إثبات مالي (500 يورو/شهر)", "تأمين صحي", "وثيقة سكن", "صور شخصية"],
     documentsEn: ["Valid passport", "University admission", "Financial proof (€500/month)", "Health insurance", "Accommodation", "Photos"],
     notesAr: "بوابة للدراسة في الاتحاد الأوروبي. معظم البرامج باللغة الإنجليزية. ليماسول ونيقوسيا الأكثر استقطاباً.",
-    notesEen: "Gateway to EU study. Most programs in English. Limassol and Nicosia most popular.",
+    notesEn: "Gateway to EU study. Most programs in English. Limassol and Nicosia most popular.",
     officialLink: "https://www.mfa.gov.cy"
   },
   {
-    code: "BY", nameAr: "بيلاروسيا", nameEen: "Belarus",
+    code: "BY", nameAr: "بيلاروسيا", nameEn: "Belarus",
     visaRequired: true, visaType: "student",
     processingDays: "15-30", feesUSD: "60",
     documentsAr: ["جواز سفر ساري", "دعوة من الجامعة", "كشف حساب بنكي", "فحص طبي (HIV)", "شهادة خلو سوابق", "صور شخصية"],
     documentsEn: ["Valid passport", "University invitation", "Bank statement", "Medical exam (HIV)", "Police clearance", "Photos"],
     notesAr: "تكاليف دراسة منخفضة جداً. جامعة بيلاروسيا الحكومية مشهورة في الطب. التدريس بالروسية أو الإنجليزية.",
-    notesEen: "Very low study costs. Belarusian State University known for medicine. Teaching in Russian or English.",
+    notesEn: "Very low study costs. Belarusian State University known for medicine. Teaching in Russian or English.",
     officialLink: "https://studyinbelarus.by"
   },
 ];
