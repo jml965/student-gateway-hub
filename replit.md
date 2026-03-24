@@ -1,8 +1,8 @@
-# Workspace
+# Baansy — منصة التسجيل الجامعي الذكية
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+Full-stack AI-powered university registration platform. pnpm workspace monorepo using TypeScript.
 
 ## Stack
 
@@ -10,87 +10,129 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Node.js version**: 24
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
-- **API framework**: Express 5
+- **API framework**: Express 5 + compression + rate-limiting
 - **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **Auth**: JWT (jsonwebtoken) + bcryptjs, 30-day tokens
+- **AI Chat**: OpenAI streaming SSE (configurable model/prompt/temp/speed)
+- **Frontend**: React + Vite + Tailwind CSS
+- **Build**: esbuild (server), Vite (client)
+
+## Artifacts
+
+| Artifact | Preview Path | Description |
+|----------|-------------|-------------|
+| `artifacts/baansy` | `/` | Main React web app — RTL/LTR, dark/light, responsive |
+| `artifacts/api-server` | `/api` | Express API server on port 8080 |
+| `artifacts/mockup-sandbox` | `/__mockup` | Design sandbox |
 
 ## Structure
 
 ```text
-artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
-├── lib/                    # Shared libraries
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+├── artifacts/
+│   ├── baansy/                # React+Vite frontend
+│   │   └── src/
+│   │       ├── App.tsx          # Router: home/login/signup/forgot/referral/admin
+│   │       ├── components/
+│   │       │   └── icons.tsx    # Inline SVG icon components
+│   │       ├── hooks/
+│   │       │   └── useAuth.tsx  # JWT auth context (login/register/logout)
+│   │       ├── lib/
+│   │       │   └── api.ts       # API fetch wrapper + SSE streamChat
+│   │       └── pages/
+│   │           ├── HomePage.tsx    # Desktop+Mobile chat UI with real streaming
+│   │           ├── AuthPages.tsx   # Login, Signup, ForgotPassword
+│   │           ├── ReferralPage.tsx # Referral landing page
+│   │           └── AdminPage.tsx   # Admin dashboard (stats + AI settings)
+│   └── api-server/            # Express backend
+│       └── src/
+│           ├── app.ts           # CORS, compression, rate-limiting, routes
+│           ├── routes/
+│           │   ├── auth.ts      # POST /register /login /logout /me /forgot /reset
+│           │   ├── chat.ts      # GET/POST sessions, SSE send endpoint
+│           │   └── admin.ts     # GET stats, GET/PUT ai-settings, GET users
+│           └── lib/
+│               ├── auth.ts      # JWT sign/verify, bcrypt hash/compare
+│               └── middleware.ts # requireAuth, requireAdmin
+├── lib/
+│   ├── db/
+│   │   └── src/schema/
+│   │       ├── users.ts         # users table (id, name, email, passwordHash, role, status)
+│   │       ├── sessions.ts      # sessions table
+│   │       ├── password-resets.ts
+│   │       ├── universities.ts  # universities (name, country, type, rank, logo)
+│   │       ├── specializations.ts
+│   │       ├── applications.ts
+│   │       ├── documents.ts
+│   │       ├── notifications.ts
+│   │       ├── referrals.ts
+│   │       ├── services.ts
+│   │       ├── chat.ts          # chat_sessions, chat_messages + role enum
+│   │       └── ai-settings.ts   # model, systemPrompt, temperature, maxTokens, typingSpeedMs
+│   ├── api-spec/               # OpenAPI spec + Orval codegen
+│   ├── api-client-react/       # Generated React Query hooks
+│   └── api-zod/                # Generated Zod schemas
+└── scripts/                    # Utility scripts
 ```
 
-## TypeScript & Composite Projects
+## API Routes
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
+### Auth (`/api/auth`)
+- `POST /register` — name, email, password → JWT token + user
+- `POST /login` — email, password → JWT token + user
+- `POST /logout` — (auth required)
+- `GET /me` — (auth required) → current user
+- `POST /forgot-password` — email → sends reset link
+- `POST /reset-password` — token, password → resets password
 
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+### Chat (`/api/chat`) — auth required
+- `GET /sessions` — list user's chat sessions
+- `POST /sessions` — create new session
+- `GET /sessions/:id/messages` — get messages for session
+- `POST /sessions/:id/send` — send message → SSE streaming response
 
-## Root Scripts
+### Admin (`/api/admin`) — admin role required
+- `GET /stats` — total users, sessions, messages, applications
+- `GET /ai-settings` — get AI model config + hasApiKey status
+- `PUT /ai-settings` — update model/systemPrompt/temperature/maxTokens/typingSpeedMs
+- `GET /users` — list all users
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
+## Frontend Features
 
-## Packages
+- **Arabic/English** — full RTL/LTR support, Cairo (AR) + Inter (EN) fonts
+- **Dark/Light mode** — toggle per-user preference
+- **Desktop** — collapsible sidebar (260px), chat history, service cards 2×2 grid
+- **Mobile** — hamburger drawer, carousel service cards, top stats bar
+- **Real AI chat** — OpenAI SSE streaming at 20ms typing speed (configurable)
+- **Auth flows** — login, signup (with terms checkbox), forgot password
+- **Admin panel** — stats dashboard + AI settings (model, prompt, temp, speed)
+- **Referral page** — landing page with testimonial, stats, badges
 
-### `artifacts/api-server` (`@workspace/api-server`)
+## Key Environment Variables
 
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
+- `DATABASE_URL` — PostgreSQL connection (auto-provided by Replit)
+- `OPENAI_API_KEY` — OpenAI API key for AI chat (set as Replit secret)
+- `JWT_SECRET` — JWT signing secret (defaults to dev secret; set in production)
 
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
+## DB Commands
 
-### `lib/db` (`@workspace/db`)
+```bash
+pnpm --filter @workspace/db run push        # Apply schema changes (development)
+pnpm --filter @workspace/db run push-force  # Force push (destructive)
+```
 
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
+## Rate Limiting
 
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
+- Auth endpoints: 20 req / 15 min per IP
+- General API: 300 req / min per IP
 
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
+## Completed Tasks
 
-### `lib/api-spec` (`@workspace/api-spec`)
+- ✅ Task #2 — DB schema (11 tables), Express backend (auth/chat/admin), React frontend (all pages)
 
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
+## Upcoming Tasks
 
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
-
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
-
-### `lib/api-zod` (`@workspace/api-zod`)
-
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
-
-### `scripts` (`@workspace/scripts`)
-
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+- Task #3 — 150 university profiles, document upload, CRM
+- Task #4 — Application workflow, notifications, preliminary acceptance
+- Task #5 — Bank & electronic payment system
+- Task #6 — Advanced AI chat, integrated student services
+- Task #7 — Referral program with commissions and account statements
