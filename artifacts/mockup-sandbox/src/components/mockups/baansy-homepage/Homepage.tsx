@@ -13,13 +13,12 @@ import {
   Sun,
   Globe,
   ChevronRight,
+  ChevronLeft,
   Send,
   MoreHorizontal,
   Building2,
   Building,
   Sparkles,
-  PanelLeftClose,
-  PanelLeftOpen,
   Settings,
   LogOut,
   LogIn,
@@ -134,11 +133,6 @@ export function Homepage() {
   const ctrlColor = isDark ? "#93c5fd" : "#1d4ed8";
   const historyHover = isDark ? "#1e293b" : "#dbeafe";
 
-  // Sidebar toggle icon based on language direction
-  const CollapseIcon = lang === "ar"
-    ? (sidebarOpen ? PanelLeftOpen : PanelLeftClose)
-    : (sidebarOpen ? PanelLeftClose : PanelLeftOpen);
-
   return (
     <div
       style={{
@@ -152,6 +146,51 @@ export function Homepage() {
         overflow: "hidden",
       }}
     >
+      {/* ─────────────── SIDEBAR WRAPPER (holds sidebar + edge toggle) ─────────────── */}
+      <div
+        style={{
+          position: "relative",
+          flexShrink: 0,
+          order: lang === "ar" ? 1 : 0,
+        }}
+      >
+        {/* Edge toggle tab — always visible on the right edge of the wrapper */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          title={sidebarOpen ? tx.collapseTip : tx.expandTip}
+          style={{
+            position: "absolute",
+            top: 68,
+            right: -28,
+            width: 28,
+            height: 52,
+            borderRadius: "0 10px 10px 0",
+            backgroundColor: sidebarBg,
+            border: `1px solid ${sidebarBorder}`,
+            borderLeft: "none",
+            color: textMuted,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10,
+            boxShadow: "2px 2px 6px rgba(0,0,0,0.08)",
+            transition: "background-color 0.15s, color 0.15s",
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = isDark ? "#334155" : "#dbeafe";
+            (e.currentTarget as HTMLButtonElement).style.color = accentBlue;
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = sidebarBg;
+            (e.currentTarget as HTMLButtonElement).style.color = textMuted;
+          }}
+        >
+          {sidebarOpen
+            ? <ChevronLeft size={15} />
+            : <ChevronRight size={15} />}
+        </button>
+
       {/* ─────────────── SIDEBAR ─────────────── */}
       <aside
         style={{
@@ -165,9 +204,9 @@ export function Homepage() {
           flexDirection: "column",
           padding: sidebarOpen ? "16px 12px" : "0",
           gap: 8,
-          order: lang === "ar" ? 1 : 0,
           transition: "width 0.25s cubic-bezier(0.4,0,0.2,1), min-width 0.25s cubic-bezier(0.4,0,0.2,1), padding 0.2s",
           flexShrink: 0,
+          height: "100vh",
         }}
       >
         {/* Logo */}
@@ -371,6 +410,7 @@ export function Homepage() {
           )}
         </div>
       </aside>
+      </div>
 
       {/* ─────────────── MAIN AREA ─────────────── */}
       <main
@@ -394,24 +434,8 @@ export function Homepage() {
           gap: 8,
           flexShrink: 0,
         }}>
-          {/* Left: sidebar toggle + assistant label */}
+          {/* Left: assistant label */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              title={sidebarOpen ? tx.collapseTip : tx.expandTip}
-              style={{
-                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
-                border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`,
-                color: textMuted, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = isDark ? "#334155" : "#dbeafe"; (e.currentTarget as HTMLButtonElement).style.color = accentBlue; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = isDark ? "#1e293b" : "#f1f5f9"; (e.currentTarget as HTMLButtonElement).style.color = textMuted; }}
-            >
-              <CollapseIcon size={16} />
-            </button>
             <Sparkles size={15} color={accentBlue} />
             <span style={{ fontSize: 13, color: textMuted, fontWeight: 500, whiteSpace: "nowrap" }}>
               {tx.assistantLabel}
