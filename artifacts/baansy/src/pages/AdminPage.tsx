@@ -163,10 +163,16 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
     } catch { } finally { setStudentDetailLoading(false); }
   };
 
-  const getDocDownloadUrl = (fileUrl: string) => {
-    // fileUrl is like /objects/uploads/uuid — convert to full API download URL
+  const getDocDownloadUrl = (fileUrl: string, token?: string) => {
+    let path: string | null = null;
     if (fileUrl.startsWith("/objects/")) {
-      const path = fileUrl.slice("/objects/".length);
+      path = fileUrl.slice("/objects/".length);
+    } else if (fileUrl.startsWith("/") && fileUrl.includes("/uploads/")) {
+      // Fallback: raw bucket path like /bucket/private/uploads/uuid
+      const uploadsIdx = fileUrl.indexOf("/uploads/");
+      path = "uploads/" + fileUrl.slice(uploadsIdx + "/uploads/".length);
+    }
+    if (path) {
       return `${API_URL}/storage/objects/${path}`;
     }
     return fileUrl;

@@ -160,9 +160,13 @@ export class ObjectStorageService {
     }
 
     const url = new URL(rawPath);
-    const rawObjectPath = url.pathname;
+    const rawObjectPath = url.pathname; // always starts with "/"
 
     let objectEntityDir = this.getPrivateObjectDir();
+    // Ensure leading slash so comparison with url.pathname (which always has one) works
+    if (!objectEntityDir.startsWith("/")) {
+      objectEntityDir = `/${objectEntityDir}`;
+    }
     if (!objectEntityDir.endsWith("/")) {
       objectEntityDir = `${objectEntityDir}/`;
     }
