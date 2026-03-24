@@ -163,19 +163,35 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
     } catch { } finally { setStudentDetailLoading(false); }
   };
 
-  const getDocDownloadUrl = (fileUrl: string, token?: string) => {
-    let path: string | null = null;
+  const getDocStoragePath = (fileUrl: string): string => {
     if (fileUrl.startsWith("/objects/")) {
-      path = fileUrl.slice("/objects/".length);
-    } else if (fileUrl.startsWith("/") && fileUrl.includes("/uploads/")) {
-      // Fallback: raw bucket path like /bucket/private/uploads/uuid
-      const uploadsIdx = fileUrl.indexOf("/uploads/");
-      path = "uploads/" + fileUrl.slice(uploadsIdx + "/uploads/".length);
+      return `${API_URL}/storage/objects/${fileUrl.slice("/objects/".length)}`;
     }
-    if (path) {
-      return `${API_URL}/storage/objects/${path}`;
+    if (fileUrl.startsWith("/") && fileUrl.includes("/uploads/")) {
+      const uploadsIdx = fileUrl.indexOf("/uploads/");
+      return `${API_URL}/storage/objects/uploads/${fileUrl.slice(uploadsIdx + "/uploads/".length)}`;
     }
     return fileUrl;
+  };
+
+  const handleAuthDownload = async (fileUrl: string, fileName: string) => {
+    const url = getDocStoragePath(fileUrl);
+    const token = localStorage.getItem("baansy_token");
+    try {
+      const resp = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName || "document";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    } catch (e) {
+      alert(isAr ? "فشل تحميل الملف" : "Failed to download file");
+    }
   };
 
   const handleVerifyDoc = async (docId: number, verified: boolean) => {
@@ -401,14 +417,12 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
                             {new Date(doc.uploadedAt).toLocaleString()}
                           </div>
                           <div style={{ display: "flex", gap: 6 }}>
-                            <a
-                              href={getDocDownloadUrl(doc.fileUrl)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ flex: 1, padding: "6px 0", background: isDark ? "#1e293b" : "#f1f5f9", color: "#2563eb", border: `1px solid ${border}`, borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: font, textAlign: "center", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                            <button
+                              onClick={() => handleAuthDownload(doc.fileUrl, doc.fileName)}
+                              style={{ flex: 1, padding: "6px 0", background: isDark ? "#1e293b" : "#f1f5f9", color: "#2563eb", border: `1px solid ${border}`, borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: font, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
                             >
                               ⬇ {isAr ? "تحميل" : "Download"}
-                            </a>
+                            </button>
                             {!isVerified && (
                               <button
                                 onClick={() => handleVerifyDoc(doc.id, true)}
