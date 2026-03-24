@@ -7,14 +7,33 @@ import { ObjectStorageService } from "../lib/objectStorage";
 const router = Router();
 const storage = new ObjectStorageService();
 
-router.use(requireAuth);
-
 const ALLOWED_MIME = new Set([
   "image/jpeg", "image/jpg", "image/png",
   "application/pdf",
 ]);
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+
+// In-memory store tracking issued upload paths per user.
+// Prevents IDOR: a user cannot claim an upload path that was issued to a different user.
+const ISSUED_PATHS_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const issuedUploadPaths = new Map<string, { userId: number; expiresAt: number }>();
+
+function recordIssuedPath(objectPath: string, userId: number): void {
+  issuedUploadPaths.set(objectPath, { userId, expiresAt: Date.now() + ISSUED_PATHS_TTL_MS });
+}
+
+function validateIssuedPath(objectPath: string, userId: number): boolean {
+  const entry = issuedUploadPaths.get(objectPath);
+  if (!entry) return false;
+  if (Date.now() > entry.expiresAt) {
+    issuedUploadPaths.delete(objectPath);
+    return false;
+  }
+  return entry.userId === userId;
+}
+
+router.use(requireAuth);
 
 router.post("/request-upload", async (req: AuthRequest, res) => {
   const { name, size, contentType, documentType } = req.body as {
@@ -47,6 +66,8 @@ router.post("/request-upload", async (req: AuthRequest, res) => {
   const uploadURL = await storage.getObjectEntityUploadURL();
   const objectPath = storage.normalizeObjectEntityPath(uploadURL);
 
+  recordIssuedPath(objectPath, req.user!.id);
+
   res.json({ uploadURL, objectPath, documentType: docType });
 });
 
@@ -64,12 +85,21 @@ router.post("/", async (req: AuthRequest, res) => {
     return;
   }
 
+  const userId = req.user!.id;
+
+  // Verify the objectPath was issued to this user via /request-upload
+  if (!validateIssuedPath(objectPath, userId)) {
+    res.status(403).json({ error: "forbidden", message: "Upload path was not issued to this user or has expired" });
+    return;
+  }
+
+  // Consume the token so it cannot be reused
+  issuedUploadPaths.delete(objectPath);
+
   const validTypes = ["passport", "degree", "transcript", "language_cert", "photo", "bank_statement", "other"] as const;
   const docType = validTypes.includes(documentType as typeof validTypes[number])
     ? (documentType as typeof validTypes[number])
     : "other";
-
-  const userId = req.user!.id;
 
   const [doc] = await db.insert(documentsTable).values({
     userId,
@@ -90,7 +120,7 @@ router.post("/", async (req: AuthRequest, res) => {
     });
   } catch {
     // ACL set may fail if object not yet committed (presigned PUT not finished).
-    // The owner field is stored so retry can happen; non-fatal for metadata save.
+    // Non-fatal for metadata save; storage access still enforced at read time.
   }
 
   res.status(201).json(doc);
