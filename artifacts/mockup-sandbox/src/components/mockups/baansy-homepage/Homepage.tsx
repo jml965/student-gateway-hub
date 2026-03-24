@@ -32,6 +32,7 @@ const t = {
     newChat: "+ محادثة جديدة",
     todayLabel: "اليوم",
     history: ["هل يوجد غيرهم", "مرحباً", "استفسار عن الفيزا"],
+    assistantLabel: "مساعد Baansy الذكي",
     welcomeTitle: "مرحباً بك في Baansy",
     welcomeSub: "منصتك الذكية للتسجيل في أكثر من",
     welcomeSub2: "جامعة حول العالم",
@@ -59,6 +60,7 @@ const t = {
     newChat: "+ New Chat",
     todayLabel: "Today",
     history: ["Are there others?", "Hello", "Visa inquiry"],
+    assistantLabel: "Baansy AI Assistant",
     welcomeTitle: "Welcome to Baansy",
     welcomeSub: "Your smart platform for registering in over",
     welcomeSub2: "universities worldwide",
@@ -273,7 +275,7 @@ export function Homepage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Sparkles size={16} color={accentBlue} />
             <span style={{ fontSize: 13, color: textMuted, fontWeight: 500 }}>
-              {lang === "ar" ? "Baansy AI Assistant" : "Baansy AI Assistant"}
+              {tx.assistantLabel}
             </span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
