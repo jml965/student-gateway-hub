@@ -16,8 +16,18 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
 // In-memory store tracking issued upload paths per user.
 // Prevents IDOR: a user cannot claim an upload path that was issued to a different user.
+// Note: single-server only. For multi-instance deployments, replace with Redis TTL keys.
 const ISSUED_PATHS_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // purge expired entries every hour
 const issuedUploadPaths = new Map<string, { userId: number; expiresAt: number }>();
+
+// Periodic cleanup to prevent unbounded map growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of issuedUploadPaths) {
+    if (now > entry.expiresAt) issuedUploadPaths.delete(key);
+  }
+}, CLEANUP_INTERVAL_MS).unref(); // unref so the timer doesn't keep the process alive
 
 function recordIssuedPath(objectPath: string, userId: number): void {
   issuedUploadPaths.set(objectPath, { userId, expiresAt: Date.now() + ISSUED_PATHS_TTL_MS });
