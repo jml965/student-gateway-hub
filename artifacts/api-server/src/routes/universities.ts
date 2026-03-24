@@ -5,7 +5,7 @@ import { eq, and, ilike, gte, lte, or, SQL } from "drizzle-orm";
 const router = Router();
 
 router.get("/", async (req, res) => {
-  const { q, country, degree, minFee, maxFee, status = "active", page = "1", limit = "20" } = req.query as Record<string, string>;
+  const { q, country, degree, minFee, maxFee, specQ, status = "active", page = "1", limit = "20" } = req.query as Record<string, string>;
 
   const pageNum = Math.max(1, parseInt(page));
   const pageSize = Math.min(50, Math.max(1, parseInt(limit)));
@@ -36,6 +36,12 @@ router.get("/", async (req, res) => {
   if (degree) specConditions.push(eq(specializationsTable.degree, degree as "bachelor" | "master" | "phd" | "diploma"));
   if (minFee) specConditions.push(gte(specializationsTable.tuitionFee, minFee));
   if (maxFee) specConditions.push(lte(specializationsTable.tuitionFee, maxFee));
+  if (specQ) {
+    specConditions.push(or(
+      ilike(specializationsTable.nameEn, `%${specQ}%`),
+      ilike(specializationsTable.nameAr, `%${specQ}%`),
+    )!);
+  }
 
   const uniIds = universities.map((u) => u.id);
 
@@ -55,9 +61,10 @@ router.get("/", async (req, res) => {
     specsByUni.set(s.universityId, list);
   }
 
+  const hasSpecFilter = !!(degree || minFee || maxFee || specQ);
   const results = universities
     .map((u) => ({ ...u, specializations: specsByUni.get(u.id) ?? [] }))
-    .filter((u) => !degree && !minFee && !maxFee || u.specializations.length > 0);
+    .filter((u) => !hasSpecFilter || u.specializations.length > 0);
 
   res.json({ data: results, page: pageNum, pageSize, hasMore: results.length === pageSize });
 });

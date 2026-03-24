@@ -69,8 +69,10 @@ router.post("/", async (req: AuthRequest, res) => {
     ? (documentType as typeof validTypes[number])
     : "other";
 
+  const userId = req.user!.id;
+
   const [doc] = await db.insert(documentsTable).values({
-    userId: req.user!.id,
+    userId,
     type: docType,
     fileName: fileName,
     fileUrl: objectPath,
@@ -79,6 +81,17 @@ router.post("/", async (req: AuthRequest, res) => {
     applicationId: null,
     verified: false,
   }).returning();
+
+  // Set ACL policy so the owner can access their file via /storage/objects/*
+  try {
+    await storage.trySetObjectEntityAclPolicy(objectPath, {
+      owner: String(userId),
+      visibility: "private",
+    });
+  } catch {
+    // ACL set may fail if object not yet committed (presigned PUT not finished).
+    // The owner field is stored so retry can happen; non-fatal for metadata save.
+  }
 
   res.status(201).json(doc);
 });

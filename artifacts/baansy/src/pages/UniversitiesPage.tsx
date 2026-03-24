@@ -58,6 +58,7 @@ export default function UniversitiesPage({ lang, theme, navigate }: Props) {
   const [degree, setDegree] = useState("");
   const [minFee, setMinFee] = useState("");
   const [maxFee, setMaxFee] = useState("");
+  const [specQ, setSpecQ] = useState("");
 
   const [selected, setSelected] = useState<University | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -87,6 +88,7 @@ export default function UniversitiesPage({ lang, theme, navigate }: Props) {
       if (degree) params.set("degree", degree);
       if (minFee) params.set("minFee", minFee);
       if (maxFee) params.set("maxFee", maxFee);
+      if (specQ) params.set("specQ", specQ);
 
       const res = await fetch(`${API_URL}/universities?${params}`).then(r => r.json());
       if (reset) {
@@ -101,7 +103,7 @@ export default function UniversitiesPage({ lang, theme, navigate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [q, country, degree, minFee, maxFee, page]);
+  }, [q, country, degree, minFee, maxFee, specQ, page]);
 
   useEffect(() => {
     api.get<string[]>("/universities/countries").then(setCountries).catch(() => {});
@@ -109,7 +111,7 @@ export default function UniversitiesPage({ lang, theme, navigate }: Props) {
 
   useEffect(() => {
     fetchUniversities(true);
-  }, [q, country, degree, minFee, maxFee]);
+  }, [q, country, degree, minFee, maxFee, specQ]);
 
   const loadMore = () => {
     setPage(p => p + 1);
@@ -223,10 +225,19 @@ export default function UniversitiesPage({ lang, theme, navigate }: Props) {
               onChange={e => setMaxFee(e.target.value)}
             />
           </div>
+          {/* Specialization search */}
+          <div style={{ flex: "1 1 200px" }}>
+            <input
+              style={inputStyle}
+              placeholder={isAr ? "ابحث بالتخصص (طب، هندسة...)" : "Search by major (Medicine, CS...)"}
+              value={specQ}
+              onChange={e => setSpecQ(e.target.value)}
+            />
+          </div>
           {/* Clear */}
-          {(q || country || degree || minFee || maxFee) && (
+          {(q || country || degree || minFee || maxFee || specQ) && (
             <button
-              onClick={() => { setQ(""); setCountry(""); setDegree(""); setMinFee(""); setMaxFee(""); }}
+              onClick={() => { setQ(""); setCountry(""); setDegree(""); setMinFee(""); setMaxFee(""); setSpecQ(""); }}
               style={{ background: "transparent", border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.muted, padding: "8px 14px", cursor: "pointer", fontSize: 13 }}
             >
               {isAr ? "مسح الفلاتر" : "Clear Filters"}

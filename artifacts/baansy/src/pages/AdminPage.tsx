@@ -18,7 +18,28 @@ interface University {
   status: string; createdAt: string; specializationCount: number;
 }
 
+interface Student {
+  id: number; name: string; email: string; phone: string | null;
+  country: string | null; status: string; createdAt: string;
+  documentCount: number; applicationCount: number;
+}
+
+interface DocRecord {
+  id: number; userId: number; type: string; fileName: string;
+  fileUrl: string; mimeType: string | null; fileSizeBytes: number | null;
+  verified: boolean; uploadedAt: string;
+}
+
 const MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"];
+const DOC_TYPES: Record<string, { ar: string; en: string }> = {
+  passport: { ar: "جواز سفر", en: "Passport" },
+  degree: { ar: "شهادة جامعية", en: "Degree Certificate" },
+  transcript: { ar: "كشف درجات", en: "Transcript" },
+  language_cert: { ar: "شهادة لغة", en: "Language Certificate" },
+  photo: { ar: "صورة شخصية", en: "Photo" },
+  bank_statement: { ar: "كشف حساب", en: "Bank Statement" },
+  other: { ar: "مستند آخر", en: "Other Document" },
+};
 
 export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme: Theme; navigate: (p: string) => void }) {
   const { user } = useAuth();
@@ -37,12 +58,24 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [localSettings, setLocalSettings] = useState<Partial<AiSettings>>({});
-  const [tab, setTab] = useState<"stats" | "ai" | "universities">("stats");
+  const [tab, setTab] = useState<"stats" | "ai" | "universities" | "students">("stats");
 
+  // University CRM
   const [unis, setUnis] = useState<University[]>([]);
   const [uniFilter, setUniFilter] = useState<string>("pending");
   const [uniLoading, setUniLoading] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
+
+  // Student CRM
+  const [students, setStudents] = useState<Student[]>([]);
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [studentQ, setStudentQ] = useState("");
+  const [studentStatus, setStudentStatus] = useState("");
+  const [studentPage, setStudentPage] = useState(1);
+  const [studentHasMore, setStudentHasMore] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<(Student & { documents: DocRecord[]; applications: unknown[] }) | null>(null);
+  const [studentDetailLoading, setStudentDetailLoading] = useState(false);
+  const [verifyingDoc, setVerifyingDoc] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== "admin") { navigate("home"); return; }
@@ -52,6 +85,10 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   useEffect(() => {
     if (tab === "universities") loadUniversities();
   }, [tab, uniFilter]);
+
+  useEffect(() => {
+    if (tab === "students") loadStudents(true);
+  }, [tab, studentQ, studentStatus]);
 
   const loadData = async () => {
     try {
@@ -81,6 +118,46 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
     } catch { } finally { setActionId(null); }
   };
 
+  const loadStudents = async (reset = false) => {
+    setStudentLoading(true);
+    try {
+      const p = reset ? 1 : studentPage;
+      const params = new URLSearchParams({ page: String(p), limit: "20" });
+      if (studentQ) params.set("q", studentQ);
+      if (studentStatus) params.set("status", studentStatus);
+      const res = await api.get<{ data: Student[]; hasMore: boolean }>(`/admin/students?${params}`);
+      if (reset) {
+        setStudents(res.data);
+        setStudentPage(1);
+      } else {
+        setStudents(prev => [...prev, ...res.data]);
+      }
+      setStudentHasMore(res.hasMore);
+    } catch { } finally { setStudentLoading(false); }
+  };
+
+  const openStudentDetail = async (student: Student) => {
+    setStudentDetailLoading(true);
+    setSelectedStudent({ ...student, documents: [], applications: [] });
+    try {
+      const detail = await api.get<Student & { documents: DocRecord[]; applications: unknown[] }>(`/admin/students/${student.id}`);
+      setSelectedStudent(detail);
+    } catch { } finally { setStudentDetailLoading(false); }
+  };
+
+  const handleVerifyDoc = async (docId: number, verified: boolean) => {
+    setVerifyingDoc(docId);
+    try {
+      await api.patch(`/admin/documents/${docId}/verify`, { verified });
+      if (selectedStudent) {
+        setSelectedStudent(prev => prev ? {
+          ...prev,
+          documents: prev.documents.map(d => d.id === docId ? { ...d, verified } : d)
+        } : null);
+      }
+    } catch { } finally { setVerifyingDoc(null); }
+  };
+
   const save = async () => {
     setSaving(true);
     try {
@@ -97,7 +174,14 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
     { label: isAr ? "جلسات الشات" : "Chat Sessions", value: stats.totalSessions, color: "#7c3aed" },
     { label: isAr ? "الرسائل" : "Messages", value: stats.totalMessages, color: "#0891b2" },
     { label: isAr ? "الطلبات" : "Applications", value: stats.totalApplications, color: "#059669" },
+    { label: isAr ? "الوثائق" : "Documents", value: stats.totalDocuments, color: "#dc2626" },
+    { label: isAr ? "الجامعات" : "Universities", value: stats.totalUniversities, color: "#d97706" },
   ] : [];
+
+  const inputStyle: React.CSSProperties = {
+    background: inputBg, border: `1px solid ${border}`, borderRadius: 8,
+    color: textMain, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: font,
+  };
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: bg, fontFamily: font, direction: isAr ? "rtl" : "ltr", color: textMain }}>
@@ -114,35 +198,204 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
         </button>
       </div>
 
-      <div style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
+      <div style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
           {[
             { id: "stats", icon: BarChart, label: isAr ? "الإحصائيات" : "Statistics" },
+            { id: "students", icon: Users, label: isAr ? "إدارة الطلاب" : "Students CRM" },
             { id: "universities", icon: GraduationCap, label: isAr ? "الجامعات" : "Universities" },
             { id: "ai", icon: Gear, label: isAr ? "إعدادات الذكاء الاصطناعي" : "AI Settings" },
           ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id as any)} style={{ padding: "8px 16px", borderRadius: 10, border: `1px solid ${tab === t.id ? "#2563eb" : border}`, backgroundColor: tab === t.id ? "#2563eb" : cardBg, color: tab === t.id ? "#fff" : textMuted, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: font, display: "flex", alignItems: "center", gap: 6 }}>
+            <button key={t.id} onClick={() => setTab(t.id as typeof tab)} style={{ padding: "8px 16px", borderRadius: 10, border: `1px solid ${tab === t.id ? "#2563eb" : border}`, backgroundColor: tab === t.id ? "#2563eb" : cardBg, color: tab === t.id ? "#fff" : textMuted, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: font, display: "flex", alignItems: "center", gap: 6 }}>
               <t.icon size={15} />{t.label}
             </button>
           ))}
         </div>
 
+        {/* ─── Stats ─── */}
         {tab === "stats" && (
-          <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 16, marginBottom: 24 }}>
-              {statCards.map((card, i) => (
-                <div key={i} style={{ backgroundColor: cardBg, border: `1px solid ${border}`, borderRadius: 16, padding: "20px 20px 16px", boxShadow: "0 1px 4px rgba(0,0,0,.05)" }}>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: card.color, marginBottom: 6 }}>{card.value.toLocaleString()}</div>
-                  <div style={{ fontSize: 13, color: textMuted, fontWeight: 600 }}>{card.label}</div>
-                </div>
-              ))}
-            </div>
-          </>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 16, marginBottom: 24 }}>
+            {statCards.map((card, i) => (
+              <div key={i} style={{ backgroundColor: cardBg, border: `1px solid ${border}`, borderRadius: 16, padding: "20px 20px 16px", boxShadow: "0 1px 4px rgba(0,0,0,.05)" }}>
+                <div style={{ fontSize: 32, fontWeight: 800, color: card.color, marginBottom: 6 }}>{card.value.toLocaleString()}</div>
+                <div style={{ fontSize: 13, color: textMuted, fontWeight: 600 }}>{card.label}</div>
+              </div>
+            ))}
+          </div>
         )}
 
+        {/* ─── Students CRM ─── */}
+        {tab === "students" && (
+          <div style={{ display: "flex", gap: 20, height: "calc(100vh - 200px)" }}>
+            {/* Students list pane */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+              {/* Filters */}
+              <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+                <input
+                  style={{ ...inputStyle, flex: "1 1 200px" }}
+                  placeholder={isAr ? "ابحث باسم الطالب..." : "Search by student name..."}
+                  value={studentQ}
+                  onChange={e => { setStudentQ(e.target.value); }}
+                />
+                <select
+                  style={{ ...inputStyle, flex: "0 0 140px" }}
+                  value={studentStatus}
+                  onChange={e => setStudentStatus(e.target.value)}
+                >
+                  <option value="">{isAr ? "كل الحالات" : "All Statuses"}</option>
+                  <option value="active">{isAr ? "✅ نشط" : "✅ Active"}</option>
+                  <option value="suspended">{isAr ? "🚫 موقوف" : "🚫 Suspended"}</option>
+                </select>
+              </div>
+
+              {/* List */}
+              <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                {studentLoading && students.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
+                ) : students.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 60, background: cardBg, borderRadius: 14, color: textMuted }}>
+                    <div style={{ fontSize: 40, marginBottom: 8 }}>👤</div>
+                    <p>{isAr ? "لا يوجد طلاب مسجلون" : "No students registered yet"}</p>
+                  </div>
+                ) : (
+                  students.map(student => {
+                    const isSelected = selectedStudent?.id === student.id;
+                    const statusColor = student.status === "active" ? "#10b981" : "#ef4444";
+                    return (
+                      <div
+                        key={student.id}
+                        onClick={() => openStudentDetail(student)}
+                        style={{
+                          background: isSelected ? (isDark ? "#1e3a8a" : "#dbeafe") : cardBg,
+                          border: `1px solid ${isSelected ? "#2563eb" : border}`,
+                          borderRadius: 12, padding: "14px 16px", cursor: "pointer",
+                          boxShadow: "0 1px 4px rgba(0,0,0,.04)",
+                          transition: "background 0.15s",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: textMain }}>{student.name}</div>
+                            <div style={{ fontSize: 12, color: textMuted, marginTop: 2 }}>{student.email}</div>
+                            <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                              {student.country && (
+                                <span style={{ fontSize: 11, background: isDark ? "#1e293b" : "#f1f5f9", color: textMuted, padding: "2px 8px", borderRadius: 20 }}>
+                                  🌍 {student.country}
+                                </span>
+                              )}
+                              <span style={{ fontSize: 11, background: statusColor + "20", color: statusColor, padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>
+                                {student.status === "active" ? (isAr ? "نشط" : "Active") : (isAr ? "موقوف" : "Suspended")}
+                              </span>
+                              <span style={{ fontSize: 11, color: textMuted }}>
+                                📄 {student.documentCount} {isAr ? "وثيقة" : "docs"}
+                              </span>
+                              <span style={{ fontSize: 11, color: textMuted }}>
+                                📋 {student.applicationCount} {isAr ? "طلب" : "apps"}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 11, color: textMuted }}>
+                            {new Date(student.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {studentHasMore && (
+                  <button
+                    onClick={() => { setStudentPage(p => p + 1); loadStudents(false); }}
+                    disabled={studentLoading}
+                    style={{ padding: "10px 24px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600 }}
+                  >
+                    {isAr ? "تحميل المزيد" : "Load More"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Student detail pane */}
+            {selectedStudent && (
+              <div style={{ width: 380, background: cardBg, border: `1px solid ${border}`, borderRadius: 16, padding: 20, overflowY: "auto", flexShrink: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: textMain }}>{selectedStudent.name}</h3>
+                  <button onClick={() => setSelectedStudent(null)} style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, fontSize: 18 }}>✕</button>
+                </div>
+
+                <div style={{ fontSize: 12, color: textMuted, marginBottom: 12, lineHeight: 1.8 }}>
+                  <div>📧 {selectedStudent.email}</div>
+                  {selectedStudent.phone && <div>📞 {selectedStudent.phone}</div>}
+                  {selectedStudent.country && <div>🌍 {selectedStudent.country}</div>}
+                  <div>📅 {new Date(selectedStudent.createdAt).toLocaleDateString()}</div>
+                </div>
+
+                <div style={{ height: 1, background: border, marginBottom: 16 }} />
+
+                <div style={{ fontWeight: 700, fontSize: 13, color: textMain, marginBottom: 10 }}>
+                  {isAr ? "الوثائق المرفوعة" : "Uploaded Documents"} ({selectedStudent.documents.length})
+                </div>
+
+                {studentDetailLoading ? (
+                  <div style={{ textAlign: "center", padding: 20, color: textMuted }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
+                ) : selectedStudent.documents.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 20, color: textMuted, fontSize: 13 }}>
+                    {isAr ? "لا توجد وثائق" : "No documents uploaded"}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {selectedStudent.documents.map(doc => {
+                      const typeLabel = DOC_TYPES[doc.type]?.[lang] ?? doc.type;
+                      const isVerified = doc.verified;
+                      return (
+                        <div key={doc.id} style={{ background: isDark ? "#0f172a" : "#f8faff", border: `1px solid ${border}`, borderRadius: 10, padding: "10px 12px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: textMain }}>{typeLabel}</div>
+                              <div style={{ fontSize: 11, color: textMuted, marginTop: 2 }}>{doc.fileName}</div>
+                              {doc.fileSizeBytes && (
+                                <div style={{ fontSize: 11, color: textMuted }}>{(doc.fileSizeBytes / 1024 / 1024).toFixed(2)} MB</div>
+                              )}
+                            </div>
+                            <span style={{ fontSize: 11, background: isVerified ? "#d1fae5" : "#fef3c7", color: isVerified ? "#065f46" : "#92400e", padding: "2px 8px", borderRadius: 20, fontWeight: 600, whiteSpace: "nowrap" }}>
+                              {isVerified ? (isAr ? "✓ موثّق" : "✓ Verified") : (isAr ? "⏳ قيد المراجعة" : "⏳ Pending")}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 11, color: textMuted, marginBottom: 8 }}>
+                            {new Date(doc.uploadedAt).toLocaleString()}
+                          </div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            {!isVerified && (
+                              <button
+                                onClick={() => handleVerifyDoc(doc.id, true)}
+                                disabled={verifyingDoc === doc.id}
+                                style={{ flex: 1, padding: "6px 0", background: "#10b981", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: font }}
+                              >
+                                {isAr ? "توثيق ✓" : "Verify ✓"}
+                              </button>
+                            )}
+                            {isVerified && (
+                              <button
+                                onClick={() => handleVerifyDoc(doc.id, false)}
+                                disabled={verifyingDoc === doc.id}
+                                style={{ flex: 1, padding: "6px 0", background: "#fee2e2", color: "#dc2626", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: font }}
+                              >
+                                {isAr ? "إلغاء التوثيق" : "Unverify"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Universities ─── */}
         {tab === "universities" && (
           <div>
-            {/* Filter tabs */}
             <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
               {[
                 { v: "pending", l: isAr ? "⏳ قيد المراجعة" : "⏳ Pending" },
@@ -221,6 +474,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
           </div>
         )}
 
+        {/* ─── AI Settings ─── */}
         {tab === "ai" && settings && (
           <div style={{ backgroundColor: cardBg, border: `1px solid ${border}`, borderRadius: 16, padding: 28 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
@@ -246,31 +500,31 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: textMuted, marginBottom: 6 }}>{isAr ? "النموذج" : "Model"}</label>
                 <select value={localSettings.model} onChange={e => setLocalSettings(p => ({ ...p, model: e.target.value }))}
-                  style={{ width: "100%", padding: "10px 12px", backgroundColor: inputBg, border: `1px solid ${border}`, borderRadius: 10, color: textMain, fontFamily: font, fontSize: 13, outline: "none" }}>
+                  style={{ ...inputStyle, width: "100%" }}>
                   {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: textMuted, marginBottom: 6 }}>{isAr ? "سرعة الكتابة (ms)" : "Typing Speed (ms)"}</label>
                 <input type="number" min={5} max={100} value={localSettings.typingSpeedMs} onChange={e => setLocalSettings(p => ({ ...p, typingSpeedMs: Number(e.target.value) }))}
-                  style={{ width: "100%", padding: "10px 12px", backgroundColor: inputBg, border: `1px solid ${border}`, borderRadius: 10, color: textMain, fontFamily: font, fontSize: 13, outline: "none" }} />
+                  style={{ ...inputStyle, width: "100%" }} />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: textMuted, marginBottom: 6 }}>{isAr ? "درجة الإبداع (temperature)" : "Temperature"}</label>
                 <input type="number" min={0} max={2} step={0.1} value={localSettings.temperature} onChange={e => setLocalSettings(p => ({ ...p, temperature: Number(e.target.value) }))}
-                  style={{ width: "100%", padding: "10px 12px", backgroundColor: inputBg, border: `1px solid ${border}`, borderRadius: 10, color: textMain, fontFamily: font, fontSize: 13, outline: "none" }} />
+                  style={{ ...inputStyle, width: "100%" }} />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: textMuted, marginBottom: 6 }}>{isAr ? "أقصى عدد رموز" : "Max Tokens"}</label>
                 <input type="number" min={100} max={4096} step={50} value={localSettings.maxTokens} onChange={e => setLocalSettings(p => ({ ...p, maxTokens: Number(e.target.value) }))}
-                  style={{ width: "100%", padding: "10px 12px", backgroundColor: inputBg, border: `1px solid ${border}`, borderRadius: 10, color: textMain, fontFamily: font, fontSize: 13, outline: "none" }} />
+                  style={{ ...inputStyle, width: "100%" }} />
               </div>
             </div>
 
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: textMuted, marginBottom: 6 }}>{isAr ? "شخصية الذكاء الاصطناعي (System Prompt)" : "AI Personality (System Prompt)"}</label>
               <textarea value={localSettings.systemPrompt} onChange={e => setLocalSettings(p => ({ ...p, systemPrompt: e.target.value }))} rows={5}
-                style={{ width: "100%", padding: "12px", backgroundColor: inputBg, border: `1px solid ${border}`, borderRadius: 10, color: textMain, fontFamily: font, fontSize: 13, outline: "none", resize: "vertical", lineHeight: 1.6, direction: isAr ? "rtl" : "ltr" }} />
+                style={{ ...inputStyle, width: "100%", resize: "vertical", lineHeight: 1.6, direction: isAr ? "rtl" : "ltr" }} />
               <p style={{ fontSize: 11, color: textMuted, marginTop: 6 }}>
                 {isAr ? "هذا النص يحدد شخصية وأسلوب الذكاء الاصطناعي. الذكاء يجيب بلغة المستخدم دائماً." : "This text defines the AI's personality and style. The AI always responds in the user's language."}
               </p>
