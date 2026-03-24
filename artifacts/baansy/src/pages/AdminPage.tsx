@@ -100,6 +100,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [uniOptions, setUniOptions] = useState<UniOption[]>([]);
 
   // Applications CRM
+  const [appStatusCounts, setAppStatusCounts] = useState<Record<string, number>>({});
   const [appList, setAppList] = useState<AppListRecord[]>([]);
   const [appLoading, setAppLoading] = useState(false);
   const [appStatusFilter, setAppStatusFilter] = useState("");
@@ -134,7 +135,12 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   }, [tab, studentQ, studentStatus, studentCountry, studentUniversityId]);
 
   useEffect(() => {
-    if (tab === "applications") loadApplications(true);
+    if (tab === "applications") {
+      loadApplications(true);
+      api.get<{ counts: Record<string, number> }>("/admin/applications/status-counts")
+        .then(res => setAppStatusCounts(res.counts))
+        .catch(() => {});
+    }
   }, [tab, appStatusFilter, appUniFilter, appCountryFilter, appQ]);
 
   const loadData = async () => {
@@ -585,8 +591,32 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
             withdrawn: { ar: "مسحوب", en: "Withdrawn", color: "#64748b" },
           };
           const selStyle = { padding: "8px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font, cursor: "pointer" as const };
+          const totalApps = Object.values(appStatusCounts).reduce((s, n) => s + n, 0);
           return (
             <div>
+              {/* Quick Stats */}
+              {totalApps > 0 && (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+                  <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: "12px 20px", flex: "1 1 120px", textAlign: "center" }}>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: textMain }}>{totalApps}</div>
+                    <div style={{ fontSize: 11, color: textMuted, marginTop: 2 }}>{isAr ? "إجمالي الطلبات" : "Total"}</div>
+                  </div>
+                  {Object.entries(APP_STATUSES).map(([k, v]) => {
+                    const n = appStatusCounts[k] ?? 0;
+                    if (!n) return null;
+                    return (
+                      <div
+                        key={k}
+                        onClick={() => { setAppStatusFilter(appStatusFilter === k ? "" : k); setAppPage(1); }}
+                        style={{ background: cardBg, border: `2px solid ${appStatusFilter === k ? v.color : border}`, borderRadius: 12, padding: "12px 16px", flex: "1 1 100px", textAlign: "center", cursor: "pointer", transition: "border .15s" }}
+                      >
+                        <div style={{ fontSize: 22, fontWeight: 800, color: v.color }}>{n}</div>
+                        <div style={{ fontSize: 11, color: textMuted, marginTop: 2 }}>{isAr ? v.ar : v.en}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               {/* Filters */}
               <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                 <input

@@ -12,7 +12,7 @@ import {
   specializationsTable,
   notificationsTable,
 } from "@workspace/db";
-import { count, eq, ilike, and, desc, SQL, inArray } from "drizzle-orm";
+import { count, eq, ilike, and, desc, SQL, inArray, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/middleware";
 import { sendApplicationStatusEmail } from "../lib/email";
 
@@ -256,6 +256,17 @@ router.get("/users", async (_req, res) => {
 });
 
 // ─── Applications CRM ─────────────────────────────────────────────────────────
+
+router.get("/applications/status-counts", async (_req, res) => {
+  const rows = await db
+    .select({ status: applicationsTable.status, count: sql<number>`count(*)::int` })
+    .from(applicationsTable)
+    .groupBy(applicationsTable.status);
+  const counts: Record<string, number> = {};
+  for (const row of rows) counts[row.status] = row.count;
+  res.json({ counts });
+});
+
 router.get("/applications", async (req, res) => {
   const { status, universityId, country, q, page = "1", limit = "20" } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
