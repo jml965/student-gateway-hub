@@ -5,13 +5,16 @@ import {
   chatSessionsTable,
   chatMessagesTable,
   applicationsTable,
+  applicationEventsTable,
   aiSettingsTable,
   documentsTable,
   universitiesTable,
   specializationsTable,
+  notificationsTable,
 } from "@workspace/db";
 import { count, eq, ilike, and, desc, SQL, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/middleware";
+import { sendApplicationStatusEmail } from "../lib/email";
 
 const router = Router();
 
@@ -294,25 +297,138 @@ router.get("/applications", async (req, res) => {
   res.json({ data: rows.slice(0, pageSize), page: pageNum, pageSize, hasMore });
 });
 
-router.patch("/applications/:id/status", async (req, res) => {
+router.get("/applications/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "invalid_id" }); return; }
+
+  const [app] = await db
+    .select({
+      id: applicationsTable.id,
+      status: applicationsTable.status,
+      notes: applicationsTable.notes,
+      submittedAt: applicationsTable.submittedAt,
+      createdAt: applicationsTable.createdAt,
+      studentId: usersTable.id,
+      studentName: usersTable.name,
+      studentEmail: usersTable.email,
+      studentCountry: usersTable.country,
+      specializationId: applicationsTable.specializationId,
+      specNameEn: specializationsTable.nameEn,
+      specNameAr: specializationsTable.nameAr,
+      degree: specializationsTable.degree,
+      tuitionFee: specializationsTable.tuitionFee,
+      currency: specializationsTable.currency,
+      uniNameEn: universitiesTable.nameEn,
+      uniNameAr: universitiesTable.nameAr,
+      universityId: universitiesTable.id,
+    })
+    .from(applicationsTable)
+    .innerJoin(usersTable, eq(applicationsTable.studentId, usersTable.id))
+    .innerJoin(specializationsTable, eq(applicationsTable.specializationId, specializationsTable.id))
+    .innerJoin(universitiesTable, eq(specializationsTable.universityId, universitiesTable.id))
+    .where(eq(applicationsTable.id, id))
+    .limit(1);
+
+  if (!app) { res.status(404).json({ error: "not_found" }); return; }
+
+  const events = await db
+    .select()
+    .from(applicationEventsTable)
+    .where(eq(applicationEventsTable.applicationId, id))
+    .orderBy(applicationEventsTable.createdAt);
+
+  res.json({ ...app, events });
+});
+
+router.patch("/applications/:id/status", async (req: AuthRequest, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "invalid_id" }); return; }
 
   const validStatuses = ["draft", "submitted", "documents_pending", "under_review", "preliminary_accepted", "accepted", "rejected", "withdrawn"] as const;
-  const { status } = req.body as { status?: string };
+  const { status, notes } = req.body as { status?: string; notes?: string };
   if (!status || !validStatuses.includes(status as typeof validStatuses[number])) {
     res.status(400).json({ error: "invalid_status" });
     return;
   }
 
-  const [app] = await db
+  // Load the current application with student + spec + uni info for notifications/email
+  const [appRow] = await db
+    .select({
+      id: applicationsTable.id,
+      status: applicationsTable.status,
+      studentId: applicationsTable.studentId,
+      studentName: usersTable.name,
+      studentEmail: usersTable.email,
+      specNameEn: specializationsTable.nameEn,
+      specNameAr: specializationsTable.nameAr,
+      uniNameEn: universitiesTable.nameEn,
+      uniNameAr: universitiesTable.nameAr,
+    })
+    .from(applicationsTable)
+    .innerJoin(usersTable, eq(applicationsTable.studentId, usersTable.id))
+    .innerJoin(specializationsTable, eq(applicationsTable.specializationId, specializationsTable.id))
+    .innerJoin(universitiesTable, eq(specializationsTable.universityId, universitiesTable.id))
+    .where(eq(applicationsTable.id, id))
+    .limit(1);
+
+  if (!appRow) { res.status(404).json({ error: "not_found" }); return; }
+
+  const prevStatus = appRow.status;
+  const newStatus = status as typeof validStatuses[number];
+
+  const [updated] = await db
     .update(applicationsTable)
-    .set({ status: status as typeof validStatuses[number] })
+    .set({ status: newStatus, notes: notes ?? null })
     .where(eq(applicationsTable.id, id))
     .returning();
 
-  if (!app) { res.status(404).json({ error: "not_found" }); return; }
-  res.json(app);
+  // Record event in history
+  await db.insert(applicationEventsTable).values({
+    applicationId: id,
+    fromStatus: prevStatus,
+    toStatus: newStatus,
+    notes: notes ?? null,
+    createdBy: req.user!.id,
+  });
+
+  // In-app notification for student
+  const STATUS_LABELS: Record<string, { ar: string; en: string }> = {
+    draft: { ar: "مسودة", en: "Draft" },
+    submitted: { ar: "مقدَّم", en: "Submitted" },
+    documents_pending: { ar: "وثائق ناقصة", en: "Documents Pending" },
+    under_review: { ar: "قيد المراجعة", en: "Under Review" },
+    preliminary_accepted: { ar: "قبول مبدئي", en: "Preliminary Accepted" },
+    accepted: { ar: "مقبول", en: "Accepted" },
+    rejected: { ar: "مرفوض", en: "Rejected" },
+    withdrawn: { ar: "مسحوب", en: "Withdrawn" },
+  };
+  const statusEn = STATUS_LABELS[newStatus]?.en ?? newStatus;
+  const isPreliminary = newStatus === "preliminary_accepted";
+
+  await db.insert(notificationsTable).values({
+    userId: appRow.studentId,
+    type: "application_status_changed",
+    title: isPreliminary
+      ? `🎉 Congratulations! Preliminary Accepted`
+      : `Application Update: ${statusEn}`,
+    message: notes
+      ? `Your application to ${appRow.uniNameEn} — ${appRow.specNameEn} is now "${statusEn}". Note: ${notes}`
+      : `Your application to ${appRow.uniNameEn} — ${appRow.specNameEn} is now "${statusEn}".`,
+  });
+
+  // Email notification (non-fatal if SMTP not configured)
+  sendApplicationStatusEmail({
+    studentName: appRow.studentName,
+    studentEmail: appRow.studentEmail,
+    uniNameEn: appRow.uniNameEn,
+    uniNameAr: appRow.uniNameAr,
+    specNameEn: appRow.specNameEn,
+    specNameAr: appRow.specNameAr,
+    newStatus,
+    notes: notes ?? null,
+  }).catch(() => {});
+
+  res.json(updated);
 });
 
 // ─── University Approval CRM ──────────────────────────────────────────────────

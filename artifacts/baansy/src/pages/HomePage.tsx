@@ -46,6 +46,7 @@ const T = {
     referralLink: "برنامج الإحالة",
     universitiesLink: "استكشف الجامعات",
     documentsLink: "وثائقي",
+    applicationsLink: "طلباتي",
     stat1: "4,000+ جامعة خاصة", stat2: "15,000+ جامعة حكومية",
     assistantLabel: "مساعد Baansy الذكي",
     you: "أنت", thinking: "يفكر...",
@@ -66,6 +67,7 @@ const T = {
     referralLink: "Referral Program",
     universitiesLink: "Explore Universities",
     documentsLink: "My Documents",
+    applicationsLink: "My Applications",
     stat1: "4,000+ Private", stat2: "15,000+ Public",
     assistantLabel: "Baansy AI Assistant",
     you: "You", thinking: "Thinking...",
@@ -106,6 +108,7 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [inputVal, setInputVal] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSession, setCurrentSession] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -115,7 +118,17 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (user) loadSessions();
+    if (user) {
+      loadSessions();
+      const fetchUnread = () => {
+        api.get<{ count: number }>("/notifications/count").then(r => setUnreadCount(r.count)).catch(() => {});
+      };
+      fetchUnread();
+      const interval = setInterval(fetchUnread, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setUnreadCount(0);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -241,9 +254,19 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
           <GraduationCap size={14} />{tx.universitiesLink}
         </button>
         {user && (
-          <button onClick={() => navigate("documents")} style={{ backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "9px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, fontFamily: tx.font, whiteSpace: "nowrap" }}>
-            <FileText size={14} />{tx.documentsLink}
-          </button>
+          <>
+            <button onClick={() => navigate("documents")} style={{ backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "9px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, fontFamily: tx.font, whiteSpace: "nowrap" }}>
+              <FileText size={14} />{tx.documentsLink}
+            </button>
+            <button onClick={() => navigate("applications")} style={{ backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "9px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, fontFamily: tx.font, whiteSpace: "nowrap", position: "relative" }}>
+              <GraduationCap size={14} />{tx.applicationsLink}
+              {unreadCount > 0 && (
+                <span style={{ position: "absolute", top: 4, insetInlineEnd: 4, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+          </>
         )}
         <button onClick={() => navigate("referral")} style={{ backgroundColor: ctrlBg, color: ctrlColor, border: "none", borderRadius: 8, padding: "9px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, fontFamily: tx.font, whiteSpace: "nowrap" }}>
           <Gift size={14} />{tx.referralLink}

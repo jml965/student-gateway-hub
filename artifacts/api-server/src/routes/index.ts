@@ -7,6 +7,8 @@ import universitiesRouter from "./universities";
 import documentsRouter from "./documents";
 import storageRouter from "./storage";
 import universityPortalRouter from "./university-portal";
+import applicationsRouter from "./applications";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -18,5 +20,7 @@ router.use("/universities", universitiesRouter);
 router.use("/documents", documentsRouter);
 router.use(storageRouter);
 router.use("/university-portal", universityPortalRouter);
+router.use("/applications", applicationsRouter);
+router.use("/notifications", notificationsRouter);
 
 export default router;

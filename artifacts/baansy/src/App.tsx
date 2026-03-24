@@ -8,8 +8,9 @@ import UniversityRegisterPage from "@/pages/UniversityRegisterPage";
 import UniversityPortalPage from "@/pages/UniversityPortalPage";
 import UniversitiesPage from "@/pages/UniversitiesPage";
 import DocumentsPage from "@/pages/DocumentsPage";
+import ApplicationsPage from "@/pages/ApplicationsPage";
 
-type Page = "home" | "login" | "signup" | "forgot" | "reset-password" | "referral" | "admin" | "university-register" | "university-portal" | "universities" | "documents";
+type Page = "home" | "login" | "signup" | "forgot" | "reset-password" | "referral" | "admin" | "university-register" | "university-portal" | "universities" | "documents" | "applications";
 type Lang = "ar" | "en";
 type Theme = "light" | "dark";
 
@@ -59,6 +60,7 @@ export default function App() {
         {page === "university-portal" && <UniversityPortalPage {...commonProps} />}
         {page === "universities" && <UniversitiesPage {...commonProps} />}
         {page === "documents" && <DocumentsPage {...commonProps} />}
+        {page === "applications" && <ApplicationsPage {...commonProps} />}
       </div>
     </AuthProvider>
   );

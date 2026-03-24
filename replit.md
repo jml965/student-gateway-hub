@@ -62,6 +62,7 @@ Full-stack AI-powered university registration platform. pnpm workspace monorepo 
 │   │       ├── universities.ts  # universities (name, country, type, rank, logo)
 │   │       ├── specializations.ts
 │   │       ├── applications.ts
+│   │       ├── application-events.ts  # Status change history (fromStatus, toStatus, notes, createdBy)
 │   │       ├── documents.ts
 │   │       ├── notifications.ts
 │   │       ├── referrals.ts
@@ -104,6 +105,22 @@ Full-stack AI-powered university registration platform. pnpm workspace monorepo 
 - `PATCH /universities/:id/approve` — approve pending university (activates user too)
 - `PATCH /universities/:id/reject` — reject university
 - `PATCH /universities/:id/suspend` — suspend active university
+- `GET /applications` — list applications (q, status, universityId, country, page)
+- `GET /applications/:id` — application detail with student info + event history
+- `PATCH /applications/:id/status` — change status, add notes, create event + in-app notification + email
+
+### Applications (`/api/applications`) — auth required (student)
+- `GET /` — list own applications with uni/spec info
+- `POST /` — create new application (body: specializationId)
+- `GET /:id` — application detail with events timeline
+- `POST /:id/submit` — submit draft application (requires ≥1 document)
+- `DELETE /:id` — withdraw application (sets status to "withdrawn")
+
+### Notifications (`/api/notifications`) — auth required
+- `GET /` — list own notifications (50 most recent)
+- `GET /count` — count of unread notifications
+- `PATCH /:id/read` — mark single notification as read
+- `PATCH /read-all` — mark all notifications as read
 
 ### Universities (`/api/universities`) — public
 - `GET /` — search/filter (q, country, degree, minFee, maxFee, page)
@@ -134,9 +151,13 @@ Full-stack AI-powered university registration platform. pnpm workspace monorepo 
 - **Real AI chat** — OpenAI SSE streaming at 20ms typing speed (configurable)
 - **Auth flows** — login, signup (with terms checkbox), forgot password
 - **Admin panel** — stats, AI settings, student CRM, university approval workflow
+- **Admin Applications CRM** — applications list with status-change modal (notes support), event history panel with clickable timeline
 - **Referral page** — landing page with testimonial, stats, badges
 - **University Register page** — self-registration form with full bilingual support
 - **University Portal** — manage profile & specializations, approval status display
+- **ApplicationsPage** — student application tracker: visual stepper (6 stages), timeline, congratulations screen for preliminary_accepted, withdraw button
+- **Notifications** — in-app notification bell with unread badge on sidebar, notifications tab with mark-read / mark-all-read
+- **Email** — bilingual (AR/EN) email on status change via Nodemailer + SMTP_URL (graceful console.log fallback if unconfigured)
 
 ## Key Environment Variables
 
@@ -164,14 +185,22 @@ pnpm --filter @workspace/db run push-force  # Force push (destructive)
 - Auth endpoints: 20 req / 15 min per IP
 - General API: 300 req / min per IP
 
+## Application Status Flow
+
+`draft` → `submitted` → `documents_pending` | `under_review` → `preliminary_accepted` → `accepted`
+
+Also: `rejected`, `withdrawn` (terminal)
+
+Status changes are immutable events recorded in `application_events` table.
+
 ## Completed Tasks
 
 - ✅ Task #2 — DB schema (11 tables), Express backend (auth/chat/admin), React frontend (all pages)
 - ✅ Task #3 — 150 universities seeded (600 specializations), document upload API (GCS presigned URLs), admin CRM (students/documents/universities), university self-registration portal with admin approval workflow
+- ✅ Task #4 — Application lifecycle (DB events table, student apply/submit/withdraw, admin status change + notes modal, event history CRM panel, in-app notifications, notification bell with badge, notifications tab, congratulations screen, bilingual email via Nodemailer)
 
 ## Upcoming Tasks
 
-- Task #4 — Application workflow, notifications, preliminary acceptance
 - Task #5 — Bank & electronic payment system
 - Task #6 — Advanced AI chat, integrated student services
 - Task #7 — Referral program with commissions and account statements

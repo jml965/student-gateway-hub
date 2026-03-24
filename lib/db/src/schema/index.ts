@@ -4,6 +4,7 @@ export * from "./password-resets";
 export * from "./universities";
 export * from "./specializations";
 export * from "./applications";
+export * from "./application-events";
 export * from "./documents";
 export * from "./notifications";
 export * from "./referrals";

@@ -109,6 +109,13 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [appPage, setAppPage] = useState(1);
   const [appHasMore, setAppHasMore] = useState(false);
   const [updatingAppId, setUpdatingAppId] = useState<number | null>(null);
+  // Status change modal with notes + event history
+  const [statusModal, setStatusModal] = useState<{ appId: number; current: string } | null>(null);
+  const [statusModalNext, setStatusModalNext] = useState("");
+  const [statusModalNotes, setStatusModalNotes] = useState("");
+  const [appDetailId, setAppDetailId] = useState<number | null>(null);
+  const [appDetail, setAppDetail] = useState<(AppListRecord & { events: { id: number; fromStatus: string | null; toStatus: string; notes: string | null; createdAt: string }[] }) | null>(null);
+  const [appDetailLoading, setAppDetailLoading] = useState(false);
 
   useEffect(() => {
     if (!user || user.role !== "admin") { navigate("home"); return; }
@@ -247,12 +254,27 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
     } catch { } finally { setAppLoading(false); }
   };
 
-  const handleUpdateAppStatus = async (appId: number, status: string) => {
+  const handleUpdateAppStatus = async (appId: number, status: string, notes?: string) => {
     setUpdatingAppId(appId);
     try {
-      await api.patch(`/admin/applications/${appId}/status`, { status });
+      await api.patch(`/admin/applications/${appId}/status`, { status, notes: notes || undefined });
       setAppList(prev => prev.map(a => a.id === appId ? { ...a, status } : a));
+      if (appDetailId === appId) loadAppDetail(appId);
     } catch { } finally { setUpdatingAppId(null); }
+  };
+
+  const loadAppDetail = async (id: number) => {
+    setAppDetailLoading(true);
+    try {
+      const detail = await api.get<AppListRecord & { events: { id: number; fromStatus: string | null; toStatus: string; notes: string | null; createdAt: string }[] }>(`/admin/applications/${id}`);
+      setAppDetail(detail);
+    } catch { } finally { setAppDetailLoading(false); }
+  };
+
+  const openAppDetail = (id: number) => {
+    setAppDetailId(id);
+    setAppDetail(null);
+    loadAppDetail(id);
   };
 
   const save = async () => {
@@ -593,57 +615,152 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
                 )}
               </div>
 
-              {/* Application rows */}
-              {appLoading && appList.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
-              ) : appList.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "لا توجد طلبات" : "No applications found"}</div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {appList.map(app => {
-                    const st = APP_STATUSES[app.status] ?? { ar: app.status, en: app.status, color: "#94a3b8" };
-                    return (
-                      <div key={app.id} style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: "14px 18px", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-                        <div style={{ flex: "1 1 200px" }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: textMain }}>{app.studentName || app.studentEmail}</div>
-                          <div style={{ fontSize: 12, color: textMuted }}>{app.studentEmail}{app.studentCountry ? ` · ${app.studentCountry}` : ""}</div>
-                        </div>
-                        <div style={{ flex: "1 1 200px" }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: textMain }}>{isAr ? app.uniNameAr : app.uniNameEn}</div>
-                          <div style={{ fontSize: 12, color: textMuted }}>{isAr ? app.specNameAr : app.specNameEn} · {app.degree}</div>
-                        </div>
-                        <div style={{ flex: "0 0 auto", fontSize: 11, color: "#fff", background: st.color, padding: "3px 10px", borderRadius: 20, fontWeight: 700 }}>
-                          {isAr ? st.ar : st.en}
-                        </div>
-                        <div style={{ flex: "0 0 auto" }}>
-                          <select
-                            value={app.status}
-                            disabled={updatingAppId === app.id}
-                            onChange={e => handleUpdateAppStatus(app.id, e.target.value)}
-                            style={{ ...selStyle, fontSize: 12, padding: "5px 10px" }}
-                          >
-                            {Object.entries(APP_STATUSES).map(([k, v]) => (
-                              <option key={k} value={k}>{isAr ? v.ar : v.en}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div style={{ fontSize: 11, color: textMuted, flex: "0 0 auto" }}>
-                          {new Date(app.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {appHasMore && (
-                    <button
-                      onClick={() => { const next = appPage + 1; setAppPage(next); loadApplications(false, next); }}
-                      disabled={appLoading}
-                      style={{ padding: "10px 24px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600, alignSelf: "center", marginTop: 8 }}
-                    >
-                      {isAr ? "تحميل المزيد" : "Load More"}
-                    </button>
+              {/* Application rows + detail panel */}
+              <div style={{ display: "flex", gap: 16 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {appLoading && appList.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
+                  ) : appList.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "لا توجد طلبات" : "No applications found"}</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {appList.map(app => {
+                        const st = APP_STATUSES[app.status] ?? { ar: app.status, en: app.status, color: "#94a3b8" };
+                        const isSelected = appDetailId === app.id;
+                        return (
+                          <div key={app.id} onClick={() => openAppDetail(app.id)} style={{ background: isSelected ? (isDark ? "#1e3a5f" : "#eff6ff") : cardBg, border: `1px solid ${isSelected ? "#2563eb" : border}`, borderRadius: 12, padding: "14px 18px", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", cursor: "pointer", transition: "all .15s" }}>
+                            <div style={{ flex: "1 1 180px" }}>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: textMain }}>{app.studentName || app.studentEmail}</div>
+                              <div style={{ fontSize: 12, color: textMuted }}>{app.studentEmail}{app.studentCountry ? ` · ${app.studentCountry}` : ""}</div>
+                            </div>
+                            <div style={{ flex: "1 1 180px" }}>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: textMain }}>{isAr ? app.uniNameAr : app.uniNameEn}</div>
+                              <div style={{ fontSize: 12, color: textMuted }}>{isAr ? app.specNameAr : app.specNameEn} · {app.degree}</div>
+                            </div>
+                            <div style={{ flex: "0 0 auto", fontSize: 11, color: "#fff", background: st.color, padding: "3px 10px", borderRadius: 20, fontWeight: 700 }}>
+                              {isAr ? st.ar : st.en}
+                            </div>
+                            <div onClick={e => e.stopPropagation()} style={{ flex: "0 0 auto" }}>
+                              <button
+                                onClick={() => { setStatusModal({ appId: app.id, current: app.status }); setStatusModalNext(app.status); setStatusModalNotes(""); }}
+                                style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${border}`, background: isDark ? "#334155" : "#f1f5f9", color: textMain, cursor: "pointer", fontSize: 12, fontFamily: font, fontWeight: 600 }}
+                              >
+                                {isAr ? "تغيير الحالة" : "Change Status"}
+                              </button>
+                            </div>
+                            <div style={{ fontSize: 11, color: textMuted, flex: "0 0 auto" }}>
+                              {new Date(app.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {appHasMore && (
+                        <button
+                          onClick={() => { const next = appPage + 1; setAppPage(next); loadApplications(false, next); }}
+                          disabled={appLoading}
+                          style={{ padding: "10px 24px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600, alignSelf: "center", marginTop: 8 }}
+                        >
+                          {isAr ? "تحميل المزيد" : "Load More"}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
+
+                {/* Detail / History panel */}
+                {appDetailId && (
+                  <div style={{ width: 320, background: cardBg, border: `1px solid ${border}`, borderRadius: 14, padding: 20, alignSelf: "flex-start", flexShrink: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: textMain }}>{isAr ? "سجل الطلب" : "Application History"}</div>
+                      <button onClick={() => { setAppDetailId(null); setAppDetail(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: textMuted, fontSize: 18, lineHeight: 1 }}>×</button>
+                    </div>
+                    {appDetailLoading ? (
+                      <div style={{ color: textMuted, fontSize: 13, textAlign: "center", padding: 20 }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
+                    ) : appDetail ? (
+                      <>
+                        <div style={{ fontSize: 13, color: textMuted, marginBottom: 16 }}>
+                          <strong style={{ color: textMain }}>{appDetail.studentName || appDetail.studentEmail}</strong><br />
+                          {appDetail.uniNameEn} — {appDetail.specNameEn}
+                        </div>
+                        {appDetail.events.length === 0 ? (
+                          <div style={{ color: textMuted, fontSize: 12 }}>{isAr ? "لا توجد أحداث" : "No events yet"}</div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {appDetail.events.map((ev, i) => {
+                              const toSt = APP_STATUSES[ev.toStatus] ?? { color: "#94a3b8", en: ev.toStatus, ar: ev.toStatus };
+                              return (
+                                <div key={ev.id} style={{ position: "relative", paddingInlineStart: 20 }}>
+                                  <div style={{ position: "absolute", insetInlineStart: 0, top: 5, width: 10, height: 10, borderRadius: "50%", background: toSt.color, border: `2px solid ${border}` }} />
+                                  {i < appDetail.events.length - 1 && (
+                                    <div style={{ position: "absolute", insetInlineStart: 4, top: 18, bottom: -8, width: 2, background: border }} />
+                                  )}
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: toSt.color }}>{isAr ? toSt.ar : toSt.en}</div>
+                                  {ev.notes && <div style={{ fontSize: 11, color: textMuted, marginTop: 2, fontStyle: "italic" }}>{ev.notes}</div>}
+                                  <div style={{ fontSize: 10, color: textMuted, marginTop: 2 }}>{new Date(ev.createdAt).toLocaleString()}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Status change modal */}
+        {statusModal && (() => {
+          const APP_STATUSES_M: Record<string, { ar: string; en: string; color: string }> = {
+            draft: { ar: "مسودة", en: "Draft", color: "#94a3b8" },
+            submitted: { ar: "مقدَّم", en: "Submitted", color: "#3b82f6" },
+            documents_pending: { ar: "وثائق ناقصة", en: "Docs Pending", color: "#f59e0b" },
+            under_review: { ar: "قيد المراجعة", en: "Under Review", color: "#8b5cf6" },
+            preliminary_accepted: { ar: "قبول مبدئي", en: "Pre-Accepted", color: "#0ea5e9" },
+            accepted: { ar: "مقبول", en: "Accepted", color: "#10b981" },
+            rejected: { ar: "مرفوض", en: "Rejected", color: "#ef4444" },
+            withdrawn: { ar: "مسحوب", en: "Withdrawn", color: "#64748b" },
+          };
+          return (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setStatusModal(null)}>
+              <div style={{ background: cardBg, borderRadius: 16, padding: 28, width: 380, maxWidth: "90vw", boxShadow: "0 20px 60px rgba(0,0,0,.3)" }} onClick={e => e.stopPropagation()}>
+                <div style={{ fontWeight: 700, fontSize: 17, color: textMain, marginBottom: 18 }}>{isAr ? "تغيير حالة الطلب" : "Change Application Status"}</div>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 12, color: textMuted, display: "block", marginBottom: 6 }}>{isAr ? "الحالة الجديدة" : "New Status"}</label>
+                  <select value={statusModalNext} onChange={e => setStatusModalNext(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 14, fontFamily: font }}>
+                    {Object.entries(APP_STATUSES_M).map(([k, v]) => (
+                      <option key={k} value={k}>{isAr ? v.ar : v.en}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: 12, color: textMuted, display: "block", marginBottom: 6 }}>{isAr ? "ملاحظات (اختياري)" : "Notes (optional)"}</label>
+                  <textarea
+                    value={statusModalNotes}
+                    onChange={e => setStatusModalNotes(e.target.value)}
+                    placeholder={isAr ? "أضف ملاحظة للطالب..." : "Add a note for the student..."}
+                    rows={3}
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font, resize: "vertical", boxSizing: "border-box" }}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button onClick={() => setStatusModal(null)} style={{ padding: "9px 20px", borderRadius: 8, border: `1px solid ${border}`, background: "transparent", color: textMuted, cursor: "pointer", fontFamily: font, fontSize: 13 }}>
+                    {isAr ? "إلغاء" : "Cancel"}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleUpdateAppStatus(statusModal.appId, statusModalNext, statusModalNotes);
+                      setStatusModal(null);
+                    }}
+                    disabled={updatingAppId === statusModal.appId}
+                    style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 700 }}
+                  >
+                    {updatingAppId === statusModal.appId ? "..." : (isAr ? "تأكيد" : "Confirm")}
+                  </button>
+                </div>
+              </div>
             </div>
           );
         })()}
