@@ -446,9 +446,10 @@ export function HomepageMobile() {
                   minWidth: "100%",
                   scrollSnapAlign: "start",
                   display: "flex",
-                  gap: 8,
+                  gap: 10,
                   padding: "2px 2px 4px",
                   boxSizing: "border-box",
+                  alignItems: "stretch",
                 }}
               >
                 {pair.map((svc, si) => {
@@ -457,33 +458,79 @@ export function HomepageMobile() {
                     <div
                       key={si}
                       style={{
-                        flex: 1,
+                        width: "calc(50% - 5px)",
+                        flex: "0 0 calc(50% - 5px)",
                         backgroundColor: cardBg,
-                        border: `1px solid ${cardBorder}`,
-                        borderRadius: 12,
-                        padding: "12px 10px",
+                        border: `1.5px solid ${cardBorder}`,
+                        borderRadius: 16,
+                        padding: "14px 12px 12px",
                         cursor: "pointer",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: isAr ? "flex-end" : "flex-start",
-                        gap: 8,
-                        boxShadow: isDark ? "none" : "0 1px 4px rgba(0,0,0,0.07)",
-                        transition: "border-color 0.15s, box-shadow 0.15s",
+                        gap: 10,
+                        boxShadow: isDark
+                          ? "0 2px 12px rgba(0,0,0,0.3)"
+                          : "0 2px 10px rgba(37,99,235,0.07)",
+                        transition: "border-color 0.15s, box-shadow 0.15s, transform 0.15s",
                       }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = accentBlue; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(37,99,235,0.15)"; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = cardBorder; (e.currentTarget as HTMLDivElement).style.boxShadow = isDark ? "none" : "0 1px 4px rgba(0,0,0,0.07)"; }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLDivElement).style.borderColor = accentBlue;
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 18px rgba(37,99,235,0.2)";
+                        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLDivElement).style.borderColor = cardBorder;
+                        (e.currentTarget as HTMLDivElement).style.boxShadow = isDark ? "0 2px 12px rgba(0,0,0,0.3)" : "0 2px 10px rgba(37,99,235,0.07)";
+                        (e.currentTarget as HTMLDivElement).style.transform = "none";
+                      }}
                     >
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: isDark ? "linear-gradient(135deg, #1e3a8a, #1d4ed8)" : "linear-gradient(135deg, #eff6ff, #dbeafe)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Icon size={18} color={isDark ? "#93c5fd" : "#1d4ed8"} />
+                      {/* Icon */}
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+                        background: isDark
+                          ? "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)"
+                          : "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        boxShadow: isDark ? "0 2px 8px rgba(37,99,235,0.4)" : "0 2px 6px rgba(37,99,235,0.15)",
+                      }}>
+                        <Icon size={20} color={isDark ? "#93c5fd" : "#1d4ed8"} />
                       </div>
-                      <div style={{ width: "100%" }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: textMain, marginBottom: 2, textAlign: isAr ? "right" : "left" }}>{svc.label}</div>
-                        <div style={{ fontSize: 10, color: textMuted, textAlign: isAr ? "right" : "left", lineHeight: 1.4 }}>{svc.desc}</div>
+
+                      {/* Text */}
+                      <div style={{ flex: 1, width: "100%", minHeight: 0 }}>
+                        <div style={{
+                          fontSize: 12, fontWeight: 700, color: textMain,
+                          marginBottom: 4, textAlign: isAr ? "right" : "left",
+                          lineHeight: 1.3,
+                        }}>
+                          {svc.label}
+                        </div>
+                        <div style={{
+                          fontSize: 10, color: textMuted,
+                          textAlign: isAr ? "right" : "left",
+                          lineHeight: 1.5,
+                        }}>
+                          {svc.desc}
+                        </div>
                       </div>
-                      <div style={{ display: "flex", justifyContent: isAr ? "flex-start" : "flex-end", width: "100%" }}>
-                        {isAr
-                          ? <ChevronLeft size={13} color={accentBlue} />
-                          : <ChevronRight size={13} color={accentBlue} />}
+
+                      {/* Arrow chip */}
+                      <div style={{
+                        display: "flex",
+                        justifyContent: isAr ? "flex-start" : "flex-end",
+                        width: "100%",
+                      }}>
+                        <div style={{
+                          width: 22, height: 22, borderRadius: 7,
+                          backgroundColor: accentBlueSoft,
+                          border: `1px solid ${isDark ? "#1d4ed840" : "#bfdbfe"}`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          {isAr
+                            ? <ChevronLeft size={12} color={accentBlueText} />
+                            : <ChevronRight size={12} color={accentBlueText} />}
+                        </div>
                       </div>
                     </div>
                   );
