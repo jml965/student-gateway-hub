@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, universitiesTable, specializationsTable } from "@workspace/db";
-import { eq, and, ilike, gte, lte, or, SQL } from "drizzle-orm";
+import { eq, and, ilike, or, SQL, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -34,8 +34,9 @@ router.get("/", async (req, res) => {
     eq(specializationsTable.status, "active"),
   ];
   if (degree) specConditions.push(eq(specializationsTable.degree, degree as "bachelor" | "master" | "phd" | "diploma"));
-  if (minFee) specConditions.push(gte(specializationsTable.tuitionFee, minFee));
-  if (maxFee) specConditions.push(lte(specializationsTable.tuitionFee, maxFee));
+  // Use numeric cast for proper numeric comparison (tuitionFee is numeric type in DB)
+  if (minFee && !isNaN(parseFloat(minFee))) specConditions.push(sql`${specializationsTable.tuitionFee} >= ${parseFloat(minFee)}`);
+  if (maxFee && !isNaN(parseFloat(maxFee))) specConditions.push(sql`${specializationsTable.tuitionFee} <= ${parseFloat(maxFee)}`);
   if (specQ) {
     specConditions.push(or(
       ilike(specializationsTable.nameEn, `%${specQ}%`),

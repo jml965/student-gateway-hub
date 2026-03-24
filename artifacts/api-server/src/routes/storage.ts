@@ -93,7 +93,7 @@ router.get("/storage/objects/*path", requireAuth as (req: Request, res: Response
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 
     const canAccess = await objectStorageService.canAccessObjectEntity({
-      userId: authReq.user!.id,
+      userId: String(authReq.user!.id),
       objectFile,
       requestedPermission: ObjectPermission.READ,
     });
