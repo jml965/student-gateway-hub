@@ -16,6 +16,7 @@ const STATUS_LABELS: Record<string, { ar: string; en: string }> = {
   under_review: { ar: "قيد المراجعة", en: "Under Review" },
   sent_to_university: { ar: "تم الإرسال للجامعة", en: "Sent to University" },
   preliminary_accepted: { ar: "قبول مبدئي 🎉", en: "Preliminary Accepted 🎉" },
+  payment_pending: { ar: "في انتظار الدفع 💳", en: "Payment Pending 💳" },
   accepted: { ar: "مقبول ✅", en: "Accepted ✅" },
   rejected: { ar: "مرفوض", en: "Rejected" },
   withdrawn: { ar: "مسحوب", en: "Withdrawn" },

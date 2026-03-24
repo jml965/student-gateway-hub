@@ -11,6 +11,7 @@ import {
   universitiesTable,
   specializationsTable,
   notificationsTable,
+  paymentsTable,
 } from "@workspace/db";
 import { count, eq, ilike, and, desc, SQL, inArray, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/middleware";
@@ -355,7 +356,7 @@ router.patch("/applications/:id/status", async (req: AuthRequest, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "invalid_id" }); return; }
 
-  const validStatuses = ["draft", "submitted", "documents_pending", "under_review", "sent_to_university", "preliminary_accepted", "accepted", "rejected", "withdrawn"] as const;
+  const validStatuses = ["draft", "submitted", "documents_pending", "under_review", "sent_to_university", "preliminary_accepted", "payment_pending", "accepted", "rejected", "withdrawn"] as const;
   const { status, notes } = req.body as { status?: string; notes?: string };
   if (!status || !validStatuses.includes(status as typeof validStatuses[number])) {
     res.status(400).json({ error: "invalid_status" });
@@ -410,6 +411,7 @@ router.patch("/applications/:id/status", async (req: AuthRequest, res) => {
     under_review: { ar: "قيد المراجعة", en: "Under Review" },
     sent_to_university: { ar: "تم الإرسال للجامعة", en: "Sent to University" },
     preliminary_accepted: { ar: "قبول مبدئي", en: "Preliminary Accepted" },
+    payment_pending: { ar: "في انتظار الدفع", en: "Payment Pending" },
     accepted: { ar: "مقبول", en: "Accepted" },
     rejected: { ar: "مرفوض", en: "Rejected" },
     withdrawn: { ar: "مسحوب", en: "Withdrawn" },
@@ -545,6 +547,133 @@ router.patch("/universities/:id/suspend", async (req, res) => {
 
   if (!uni) { res.status(404).json({ error: "not_found" }); return; }
   res.json({ success: true, university: uni });
+});
+
+// ─── University Payment Settings ─────────────────────────────────────────────
+
+router.patch("/universities/:id/payment-settings", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "invalid_id" }); return; }
+
+  const { paymentMode, bankIban, bankName, bankBeneficiary, bankBranch, bankInstructionsAr, bankInstructionsEn } = req.body as {
+    paymentMode?: "direct" | "platform";
+    bankIban?: string; bankName?: string; bankBeneficiary?: string; bankBranch?: string;
+    bankInstructionsAr?: string; bankInstructionsEn?: string;
+  };
+
+  if (paymentMode && !["direct", "platform"].includes(paymentMode)) {
+    res.status(400).json({ error: "invalid_payment_mode" }); return;
+  }
+
+  const updateData: Record<string, any> = {};
+  if (paymentMode !== undefined) updateData.paymentMode = paymentMode;
+  if (bankIban !== undefined) updateData.bankIban = bankIban;
+  if (bankName !== undefined) updateData.bankName = bankName;
+  if (bankBeneficiary !== undefined) updateData.bankBeneficiary = bankBeneficiary;
+  if (bankBranch !== undefined) updateData.bankBranch = bankBranch;
+  if (bankInstructionsAr !== undefined) updateData.bankInstructionsAr = bankInstructionsAr;
+  if (bankInstructionsEn !== undefined) updateData.bankInstructionsEn = bankInstructionsEn;
+
+  const [uni] = await db.update(universitiesTable).set(updateData).where(eq(universitiesTable.id, id)).returning();
+  if (!uni) { res.status(404).json({ error: "not_found" }); return; }
+  res.json({ success: true, university: uni });
+});
+
+// ─── Financial Report ─────────────────────────────────────────────────────────
+
+router.get("/payments", async (req, res) => {
+  const { status, channel, page = "1", limit = "20" } = req.query as Record<string, string>;
+  const pageNum = Math.max(1, parseInt(page));
+  const pageSize = Math.min(100, Math.max(1, parseInt(limit)));
+
+  const conditions: any[] = [];
+  if (status) conditions.push(eq(paymentsTable.status, status as any));
+  if (channel) conditions.push(eq(paymentsTable.channel, channel as any));
+
+  const rows = await db
+    .select({
+      id: paymentsTable.id,
+      applicationId: paymentsTable.applicationId,
+      amount: paymentsTable.amount,
+      currency: paymentsTable.currency,
+      channel: paymentsTable.channel,
+      status: paymentsTable.status,
+      stripeSessionId: paymentsTable.stripeSessionId,
+      receiptUrl: paymentsTable.receiptUrl,
+      adminNotes: paymentsTable.adminNotes,
+      confirmedAt: paymentsTable.confirmedAt,
+      createdAt: paymentsTable.createdAt,
+      studentName: usersTable.name,
+      studentEmail: usersTable.email,
+      uniNameEn: universitiesTable.nameEn,
+      uniNameAr: universitiesTable.nameAr,
+    })
+    .from(paymentsTable)
+    .innerJoin(usersTable, eq(paymentsTable.studentId, usersTable.id))
+    .innerJoin(universitiesTable, eq(paymentsTable.universityId, universitiesTable.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(paymentsTable.createdAt))
+    .limit(pageSize + 1)
+    .offset((pageNum - 1) * pageSize);
+
+  const hasMore = rows.length > pageSize;
+  const data = hasMore ? rows.slice(0, pageSize) : rows;
+
+  const [totals] = await db
+    .select({
+      totalConfirmed: sql<string>`COALESCE(SUM(CASE WHEN status = 'confirmed' THEN amount::numeric ELSE 0 END), 0)::text`,
+      totalPending: sql<string>`COALESCE(SUM(CASE WHEN status = 'pending' THEN amount::numeric ELSE 0 END), 0)::text`,
+      countConfirmed: sql<number>`COUNT(CASE WHEN status = 'confirmed' THEN 1 END)::int`,
+      countPending: sql<number>`COUNT(CASE WHEN status = 'pending' THEN 1 END)::int`,
+    })
+    .from(paymentsTable)
+    .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+  res.json({ data, hasMore, totals });
+});
+
+router.patch("/payments/:id/confirm", async (req: AuthRequest, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "invalid_id" }); return; }
+
+  const { notes } = req.body as { notes?: string };
+
+  const [payment] = await db
+    .update(paymentsTable)
+    .set({ status: "confirmed", adminNotes: notes, confirmedBy: req.user!.id, confirmedAt: new Date() })
+    .where(eq(paymentsTable.id, id))
+    .returning();
+
+  if (!payment) { res.status(404).json({ error: "not_found" }); return; }
+
+  const [app] = await db.select({ status: applicationsTable.status, studentId: applicationsTable.studentId })
+    .from(applicationsTable).where(eq(applicationsTable.id, payment.applicationId)).limit(1);
+
+  if (app) {
+    await db.update(applicationsTable)
+      .set({ status: "accepted" })
+      .where(eq(applicationsTable.id, payment.applicationId));
+
+    await db.insert(applicationEventsTable).values({
+      applicationId: payment.applicationId,
+      fromStatus: app.status as any,
+      toStatus: "accepted",
+      notes: notes ?? "Payment confirmed by admin",
+      createdBy: req.user!.id,
+    });
+
+    await db.insert(notificationsTable).values({
+      userId: app.studentId,
+      titleAr: "تم تأكيد الدفع!",
+      titleEn: "Payment Confirmed!",
+      bodyAr: "تم تأكيد دفعتك من قِبل الإدارة وتم قبولك نهائياً.",
+      bodyEn: "Your payment has been confirmed by the admin and your application is now accepted.",
+      type: "application_update",
+      refId: payment.applicationId,
+    });
+  }
+
+  res.json({ success: true, payment });
 });
 
 export default router;

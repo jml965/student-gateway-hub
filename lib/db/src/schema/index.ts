@@ -11,3 +11,4 @@ export * from "./referrals";
 export * from "./services";
 export * from "./chat";
 export * from "./ai-settings";
+export * from "./payments";

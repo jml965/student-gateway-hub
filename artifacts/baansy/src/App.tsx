@@ -9,6 +9,7 @@ import UniversityPortalPage from "@/pages/UniversityPortalPage";
 import UniversitiesPage from "@/pages/UniversitiesPage";
 import DocumentsPage from "@/pages/DocumentsPage";
 import ApplicationsPage from "@/pages/ApplicationsPage";
+import PaymentPage from "@/pages/PaymentPage";
 
 type Page = "home" | "login" | "signup" | "forgot" | "reset-password" | "referral" | "admin" | "university-register" | "university-portal" | "universities" | "documents" | "applications" | "payment";
 type Lang = "ar" | "en";
@@ -61,25 +62,7 @@ export default function App() {
         {page === "universities" && <UniversitiesPage {...commonProps} />}
         {page === "documents" && <DocumentsPage {...commonProps} />}
         {page === "applications" && <ApplicationsPage {...commonProps} />}
-        {page === "payment" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: 16, fontFamily: lang === "ar" ? "'Cairo','Inter',sans-serif" : "'Inter','Cairo',sans-serif" }}>
-            <div style={{ fontSize: 56 }}>💳</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: theme === "dark" ? "#f1f5f9" : "#0f172a" }}>
-              {lang === "ar" ? "بوابة الدفع" : "Payment Portal"}
-            </div>
-            <div style={{ fontSize: 15, color: "#64748b", maxWidth: 360, textAlign: "center" }}>
-              {lang === "ar"
-                ? "سيتم إطلاق بوابة الدفع قريباً. تواصل مع مشرفك لإتمام عملية الدفع."
-                : "The payment portal is coming soon. Please contact your advisor to complete payment."}
-            </div>
-            <button
-              onClick={() => navigate("applications")}
-              style={{ marginTop: 16, background: "#2563eb", color: "#fff", border: "none", padding: "12px 28px", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              {lang === "ar" ? "← العودة لطلباتي" : "← Back to Applications"}
-            </button>
-          </div>
-        )}
+        {page === "payment" && <PaymentPage {...commonProps} />}
       </div>
     </AuthProvider>
   );

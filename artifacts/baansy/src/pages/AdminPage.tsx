@@ -76,7 +76,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [localSettings, setLocalSettings] = useState<Partial<AiSettings>>({});
-  const [tab, setTab] = useState<"stats" | "ai" | "universities" | "students" | "applications">("stats");
+  const [tab, setTab] = useState<"stats" | "ai" | "universities" | "students" | "applications" | "payments">("stats");
 
   // University CRM
   const [unis, setUnis] = useState<University[]>([]);
@@ -110,6 +110,20 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
   const [appPage, setAppPage] = useState(1);
   const [appHasMore, setAppHasMore] = useState(false);
   const [updatingAppId, setUpdatingAppId] = useState<number | null>(null);
+  // Financial report
+  const [paymentsList, setPaymentsList] = useState<any[]>([]);
+  const [payTotals, setPayTotals] = useState<{ totalConfirmed: string; totalPending: string; countConfirmed: number; countPending: number } | null>(null);
+  const [payStatusFilter, setPayStatusFilter] = useState("");
+  const [payChannelFilter, setPayChannelFilter] = useState("");
+  const [payLoading, setPayLoading] = useState(false);
+  const [confirmingPayId, setConfirmingPayId] = useState<number | null>(null);
+  const [payNotes, setPayNotes] = useState("");
+
+  // University payment settings modal
+  const [paySettingsModal, setPaySettingsModal] = useState<number | null>(null);
+  const [paySettingsForm, setPaySettingsForm] = useState<Record<string, string>>({});
+  const [paySettingsSaving, setPaySettingsSaving] = useState(false);
+
   // Status change modal with notes + event history
   const [statusModal, setStatusModal] = useState<{ appId: number; current: string } | null>(null);
   const [statusModalNext, setStatusModalNext] = useState("");
@@ -142,6 +156,40 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
         .catch(() => {});
     }
   }, [tab, appStatusFilter, appUniFilter, appCountryFilter, appQ]);
+
+  useEffect(() => {
+    if (tab === "payments") loadPayments();
+  }, [tab, payStatusFilter, payChannelFilter]);
+
+  const loadPayments = async () => {
+    setPayLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (payStatusFilter) params.set("status", payStatusFilter);
+      if (payChannelFilter) params.set("channel", payChannelFilter);
+      const res = await api.get<{ data: any[]; totals: any }>(`/admin/payments?${params}`);
+      setPaymentsList(res.data);
+      setPayTotals(res.totals);
+    } catch { } finally { setPayLoading(false); }
+  };
+
+  const confirmPayment = async (payId: number) => {
+    setConfirmingPayId(payId);
+    try {
+      await api.patch(`/admin/payments/${payId}/confirm`, { notes: payNotes || undefined });
+      setPayNotes("");
+      await loadPayments();
+    } catch { } finally { setConfirmingPayId(null); }
+  };
+
+  const savePaySettings = async () => {
+    if (!paySettingsModal) return;
+    setPaySettingsSaving(true);
+    try {
+      await api.patch(`/admin/universities/${paySettingsModal}/payment-settings`, paySettingsForm);
+      setPaySettingsModal(null);
+    } catch { } finally { setPaySettingsSaving(false); }
+  };
 
   const loadData = async () => {
     try {
@@ -329,6 +377,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
             { id: "stats", icon: BarChart, label: isAr ? "الإحصائيات" : "Statistics" },
             { id: "students", icon: Users, label: isAr ? "إدارة الطلاب" : "Students CRM" },
             { id: "applications", icon: ChevL, label: isAr ? "الطلبات" : "Applications" },
+            { id: "payments", icon: Key, label: isAr ? "المدفوعات" : "Payments" },
             { id: "universities", icon: GraduationCap, label: isAr ? "الجامعات" : "Universities" },
             { id: "ai", icon: Gear, label: isAr ? "إعدادات الذكاء الاصطناعي" : "AI Settings" },
           ].map(t => (
@@ -586,6 +635,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
             under_review: { ar: "قيد المراجعة", en: "Under Review", color: "#8b5cf6" },
             sent_to_university: { ar: "تم الإرسال للجامعة", en: "Sent to Uni", color: "#0891b2" },
             preliminary_accepted: { ar: "قبول مبدئي", en: "Pre-Accepted", color: "#0ea5e9" },
+            payment_pending: { ar: "في انتظار الدفع", en: "Payment Pending", color: "#d97706" },
             accepted: { ar: "مقبول", en: "Accepted", color: "#10b981" },
             rejected: { ar: "مرفوض", en: "Rejected", color: "#ef4444" },
             withdrawn: { ar: "مسحوب", en: "Withdrawn", color: "#64748b" },
@@ -742,6 +792,148 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
           );
         })()}
 
+        {/* ─── Financial Report ─── */}
+        {tab === "payments" && (
+          <div>
+            {/* Summary cards */}
+            {payTotals && (
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 20 }}>
+                <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: "16px 24px", flex: "1 1 140px", textAlign: "center" }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#10b981" }}>${parseFloat(payTotals.totalConfirmed).toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: textMuted, marginTop: 4 }}>{isAr ? "إجمالي المؤكد" : "Confirmed Revenue"}</div>
+                </div>
+                <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: "16px 24px", flex: "1 1 140px", textAlign: "center" }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b" }}>${parseFloat(payTotals.totalPending).toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: textMuted, marginTop: 4 }}>{isAr ? "إجمالي المعلق" : "Pending Revenue"}</div>
+                </div>
+                <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: "16px 24px", flex: "1 1 140px", textAlign: "center" }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#10b981" }}>{payTotals.countConfirmed}</div>
+                  <div style={{ fontSize: 12, color: textMuted, marginTop: 4 }}>{isAr ? "دفعات مؤكدة" : "Confirmed Payments"}</div>
+                </div>
+                <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: "16px 24px", flex: "1 1 140px", textAlign: "center" }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b" }}>{payTotals.countPending}</div>
+                  <div style={{ fontSize: 12, color: textMuted, marginTop: 4 }}>{isAr ? "دفعات معلقة" : "Pending Payments"}</div>
+                </div>
+              </div>
+            )}
+            {/* Filters */}
+            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+              <select value={payStatusFilter} onChange={e => setPayStatusFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font }}>
+                <option value="">{isAr ? "جميع الحالات" : "All Statuses"}</option>
+                <option value="pending">{isAr ? "معلق" : "Pending"}</option>
+                <option value="confirmed">{isAr ? "مؤكد" : "Confirmed"}</option>
+                <option value="failed">{isAr ? "فاشل" : "Failed"}</option>
+              </select>
+              <select value={payChannelFilter} onChange={e => setPayChannelFilter(e.target.value)} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font }}>
+                <option value="">{isAr ? "جميع القنوات" : "All Channels"}</option>
+                <option value="bank">{isAr ? "تحويل بنكي" : "Bank Transfer"}</option>
+                <option value="stripe">{isAr ? "بطاقة إلكترونية" : "Card (Stripe)"}</option>
+              </select>
+              <button onClick={loadPayments} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${border}`, background: cardBg, color: textMuted, cursor: "pointer", fontSize: 13, fontFamily: font }}>
+                {isAr ? "تحديث" : "Refresh"}
+              </button>
+            </div>
+            {payLoading ? (
+              <div style={{ textAlign: "center", padding: 40, color: textMuted }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
+            ) : paymentsList.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 40, color: textMuted, background: cardBg, borderRadius: 12, border: `1px solid ${border}` }}>
+                {isAr ? "لا توجد مدفوعات" : "No payments found"}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {paymentsList.map(pay => {
+                  const isConfirmed = pay.status === "confirmed";
+                  const isBankPending = pay.channel === "bank" && pay.status === "pending";
+                  return (
+                    <div key={pay.id} style={{ background: cardBg, border: `1px solid ${isConfirmed ? "#6ee7b7" : border}`, borderRadius: 12, padding: "14px 18px", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
+                      <div style={{ flex: "1 1 180px" }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: textMain }}>{pay.studentName || pay.studentEmail}</div>
+                        <div style={{ fontSize: 12, color: textMuted }}>{pay.studentEmail}</div>
+                      </div>
+                      <div style={{ flex: "1 1 160px" }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: textMain }}>{isAr ? pay.uniNameAr : pay.uniNameEn}</div>
+                        <div style={{ fontSize: 12, color: textMuted }}>
+                          {pay.channel === "bank" ? (isAr ? "تحويل بنكي" : "Bank Transfer") : (isAr ? "بطاقة إلكترونية" : "Card (Stripe)")}
+                        </div>
+                      </div>
+                      <div style={{ flex: "0 0 auto", textAlign: "center" }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: "#2563eb" }}>{parseFloat(pay.amount).toLocaleString()} {pay.currency}</div>
+                        <div style={{ fontSize: 11, color: isConfirmed ? "#10b981" : pay.status === "failed" ? "#ef4444" : "#f59e0b", fontWeight: 700, marginTop: 2 }}>
+                          {isConfirmed ? (isAr ? "مؤكد" : "Confirmed") : pay.status === "failed" ? (isAr ? "فاشل" : "Failed") : (isAr ? "معلق" : "Pending")}
+                        </div>
+                      </div>
+                      {isBankPending && (
+                        <div style={{ flex: "1 1 220px", display: "flex", flexDirection: "column", gap: 6 }}>
+                          <input
+                            placeholder={isAr ? "ملاحظات (اختياري)" : "Notes (optional)"}
+                            value={confirmingPayId === pay.id ? payNotes : ""}
+                            onChange={e => setPayNotes(e.target.value)}
+                            style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 12, fontFamily: font, width: "100%", boxSizing: "border-box" as const }}
+                          />
+                          <button
+                            onClick={() => confirmPayment(pay.id)}
+                            disabled={confirmingPayId === pay.id}
+                            style={{ padding: "8px 14px", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: font, opacity: confirmingPayId === pay.id ? 0.6 : 1 }}
+                          >
+                            {confirmingPayId === pay.id ? "..." : (isAr ? "تأكيد الاستلام ✓" : "Confirm Payment ✓")}
+                          </button>
+                        </div>
+                      )}
+                      {isConfirmed && pay.confirmedAt && (
+                        <div style={{ fontSize: 11, color: textMuted, flex: "0 0 auto" }}>
+                          {new Date(pay.confirmedAt).toLocaleDateString()}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 11, color: textMuted, flex: "0 0 auto" }}>
+                        #{pay.applicationId}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── University Payment Settings Modal ─── */}
+        {paySettingsModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }} onClick={() => setPaySettingsModal(null)}>
+            <div style={{ background: cardBg, borderRadius: 16, padding: 28, width: 460, maxWidth: "90vw", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,.3)" }} onClick={e => e.stopPropagation()}>
+              <div style={{ fontWeight: 700, fontSize: 17, color: textMain, marginBottom: 20 }}>{isAr ? "إعدادات الدفع" : "Payment Settings"}</div>
+              {[
+                { key: "paymentMode", label: isAr ? "طريقة الدفع" : "Payment Mode", type: "select", options: [["platform", isAr ? "عبر المنصة (Stripe)" : "Via Platform (Stripe)"], ["direct", isAr ? "تحويل بنكي مباشر" : "Direct Bank Transfer"]] },
+                { key: "bankBeneficiary", label: isAr ? "اسم المستفيد" : "Beneficiary Name", type: "text" },
+                { key: "bankName", label: isAr ? "اسم البنك" : "Bank Name", type: "text" },
+                { key: "bankIban", label: "IBAN", type: "text" },
+                { key: "bankBranch", label: isAr ? "الفرع" : "Branch", type: "text" },
+                { key: "bankInstructionsAr", label: isAr ? "تعليمات الدفع (عربي)" : "Payment Instructions (AR)", type: "textarea" },
+                { key: "bankInstructionsEn", label: isAr ? "تعليمات الدفع (إنجليزي)" : "Payment Instructions (EN)", type: "textarea" },
+              ].map(f => (
+                <div key={f.key} style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 12, color: textMuted, display: "block", marginBottom: 5 }}>{f.label}</label>
+                  {f.type === "select" ? (
+                    <select value={paySettingsForm[f.key] ?? ""} onChange={e => setPaySettingsForm(prev => ({ ...prev, [f.key]: e.target.value }))} style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font }}>
+                      {(f.options as [string, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                  ) : f.type === "textarea" ? (
+                    <textarea value={paySettingsForm[f.key] ?? ""} onChange={e => setPaySettingsForm(prev => ({ ...prev, [f.key]: e.target.value }))} rows={3} style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font, resize: "vertical" as const, boxSizing: "border-box" as const }} />
+                  ) : (
+                    <input value={paySettingsForm[f.key] ?? ""} onChange={e => setPaySettingsForm(prev => ({ ...prev, [f.key]: e.target.value }))} style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1px solid ${border}`, background: inputBg, color: textMain, fontSize: 13, fontFamily: font, boxSizing: "border-box" as const }} />
+                  )}
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                <button onClick={savePaySettings} disabled={paySettingsSaving} style={{ flex: 1, padding: "11px 0", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: font, opacity: paySettingsSaving ? 0.7 : 1 }}>
+                  {paySettingsSaving ? "..." : (isAr ? "حفظ الإعدادات" : "Save Settings")}
+                </button>
+                <button onClick={() => setPaySettingsModal(null)} style={{ padding: "11px 20px", background: "transparent", border: `1px solid ${border}`, borderRadius: 10, color: textMuted, cursor: "pointer", fontSize: 14, fontFamily: font }}>
+                  {isAr ? "إلغاء" : "Cancel"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Status change modal */}
         {statusModal && (() => {
           const APP_STATUSES_M: Record<string, { ar: string; en: string; color: string }> = {
@@ -751,6 +943,7 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
             under_review: { ar: "قيد المراجعة", en: "Under Review", color: "#8b5cf6" },
             sent_to_university: { ar: "تم الإرسال للجامعة", en: "Sent to University", color: "#0891b2" },
             preliminary_accepted: { ar: "قبول مبدئي", en: "Pre-Accepted", color: "#0ea5e9" },
+            payment_pending: { ar: "في انتظار الدفع", en: "Payment Pending", color: "#d97706" },
             accepted: { ar: "مقبول", en: "Accepted", color: "#10b981" },
             rejected: { ar: "مرفوض", en: "Rejected", color: "#ef4444" },
             withdrawn: { ar: "مسحوب", en: "Withdrawn", color: "#64748b" },
@@ -852,7 +1045,21 @@ export default function AdminPage({ lang, theme, navigate }: { lang: Lang; theme
                             </span>
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                        <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
+                          <button onClick={() => {
+                            setPaySettingsForm({
+                              paymentMode: (uni as any).paymentMode || "direct",
+                              bankBeneficiary: (uni as any).bankBeneficiary || "",
+                              bankName: (uni as any).bankName || "",
+                              bankIban: (uni as any).bankIban || "",
+                              bankBranch: (uni as any).bankBranch || "",
+                              bankInstructionsAr: (uni as any).bankInstructionsAr || "",
+                              bankInstructionsEn: (uni as any).bankInstructionsEn || "",
+                            });
+                            setPaySettingsModal(uni.id);
+                          }} style={{ background: isDark ? "#1e293b" : "#f1f5f9", color: "#2563eb", border: `1px solid #2563eb44`, borderRadius: 8, padding: "8px 14px", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: font }}>
+                            {isAr ? "⚙ إعدادات الدفع" : "⚙ Pay Settings"}
+                          </button>
                           {uni.status === "pending" && (
                             <>
                               <button onClick={() => handleUniAction(uni.id, "approve")} disabled={actionId === uni.id} style={{ background: "#10b981", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: font }}>

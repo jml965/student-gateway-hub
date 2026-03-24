@@ -17,6 +17,7 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
   under_review:         { ar: "قيد المراجعة", en: "Under Review", color: "#8b5cf6", step: 2 },
   sent_to_university:   { ar: "تم الإرسال للجامعة", en: "Sent to University", color: "#0891b2", step: 3 },
   preliminary_accepted: { ar: "قبول مبدئي", en: "Pre-Accepted", color: "#0ea5e9", step: 4 },
+  payment_pending:      { ar: "في انتظار الدفع", en: "Payment Pending", color: "#f59e0b", step: 4 },
   accepted:             { ar: "مقبول", en: "Accepted", color: "#10b981", step: 5 },
   rejected:             { ar: "مرفوض", en: "Rejected", color: "#ef4444", step: -1 },
   withdrawn:            { ar: "مسحوب", en: "Withdrawn", color: "#64748b", step: -1 },
@@ -353,7 +354,7 @@ export default function ApplicationsPage({ lang, theme, navigate }: Props) {
                   <div style={{ textAlign: "center", padding: 30, color: textMuted }}>{isAr ? "جاري التحميل..." : "Loading..."}</div>
                 ) : selectedApp ? (
                   <>
-                    {selectedApp.status === "preliminary_accepted" && <CongratulationsScreen app={selectedApp} />}
+                    {(selectedApp.status === "preliminary_accepted" || selectedApp.status === "payment_pending") && <CongratulationsScreen app={selectedApp} />}
 
                     {selectedApp.status === "documents_pending" && (
                       <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
