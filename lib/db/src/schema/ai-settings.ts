@@ -2,7 +2,7 @@ import { pgTable, text, serial, timestamp, integer, real } from "drizzle-orm/pg-
 
 export const aiSettingsTable = pgTable("ai_settings", {
   id: serial("id").primaryKey(),
-  model: text("model").notNull().default("gpt-4o-mini"),
+  model: text("model").notNull().default("gpt-4.1"),
   systemPrompt: text("system_prompt").notNull().default(
     "أنت مساعد Baansy الذكي. تساعد الطلاب في التسجيل الجامعي واختيار التخصص والجامعة المناسبة. ردودك قصيرة وواضحة وبشرية. لا تكرر السؤال ولا تطيل الإجابة. تجاوب بلغة المستخدم مباشرة."
   ),

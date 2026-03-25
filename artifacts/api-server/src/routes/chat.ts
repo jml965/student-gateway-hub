@@ -136,7 +136,7 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
 
   const [settings] = await db.select().from(aiSettingsTable).limit(1);
   const aiSettings = settings ?? {
-    model: "gpt-4o-mini",
+    model: "gpt-4.1",
     systemPrompt:
       "أنت مساعد Baansy الذكي. تساعد الطلاب في التسجيل الجامعي. ردودك قصيرة وبشرية وواضحة.",
     temperature: 0.7,
