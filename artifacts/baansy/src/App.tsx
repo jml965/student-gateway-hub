@@ -50,7 +50,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <div style={{ width: "100%", height: "100vh", overflow: "hidden" }}>
+      <div style={{ width: "100%", height: "100vh", overflow: page === "home" ? "hidden" : "auto" }}>
         {page === "home" && (
           <HomePage {...commonProps} setLang={handleSetLang} setTheme={handleSetTheme} isMobile={isMobile} />
         )}
