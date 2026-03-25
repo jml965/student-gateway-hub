@@ -24,8 +24,11 @@ function detectInitialPage(): Page {
 
 export default function App() {
   const [page, setPage] = useState<Page>(detectInitialPage);
-  const [lang, setLang] = useState<Lang>("ar");
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("baansy_lang") as Lang) || "ar");
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("baansy_theme") as Theme) || "dark");
+
+  const handleSetLang = (l: Lang) => { localStorage.setItem("baansy_lang", l); setLang(l); };
+  const handleSetTheme = (t: Theme) => { localStorage.setItem("baansy_theme", t); setTheme(t); };
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -49,7 +52,7 @@ export default function App() {
     <AuthProvider>
       <div style={{ width: "100%", height: "100vh", overflow: "hidden" }}>
         {page === "home" && (
-          <HomePage {...commonProps} setLang={setLang} setTheme={setTheme} isMobile={isMobile} />
+          <HomePage {...commonProps} setLang={handleSetLang} setTheme={handleSetTheme} isMobile={isMobile} />
         )}
         {page === "login" && <LoginPage {...commonProps} />}
         {page === "signup" && <SignupPage {...commonProps} />}
