@@ -363,12 +363,12 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
           <div style={{ maxWidth: 700, width: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
             {messages.map((msg) => (
               <div key={msg.id} style={{ display: "flex", flexDirection: msg.role === "user" ? (lang === "ar" ? "row" : "row-reverse") : (lang === "ar" ? "row-reverse" : "row"), gap: 10, alignItems: "flex-start" }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, background: msg.role === "user" ? "linear-gradient(135deg,#1d4ed8,#60a5fa)" : isDark ? "#1e293b" : "#f0f4ff", border: msg.role === "assistant" ? `1px solid ${isDark ? "#334155" : "#c7d2fe"}` : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, background: msg.role === "user" ? "linear-gradient(135deg,#c2410c,#fb923c)" : isDark ? "#1e293b" : "#f0f4ff", border: msg.role === "assistant" ? `1px solid ${isDark ? "#334155" : "#c7d2fe"}` : "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {msg.role === "user" ? <UserIco size={16} color="#fff" /> : <GraduationCap size={16} color={isDark ? "#93c5fd" : "#1d4ed8"} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {msg.role === "user" ? (
-                    <div style={{ backgroundColor: "#2563eb", borderRadius: 14, padding: "10px 14px", fontSize: 14, color: "#fff", lineHeight: 1.7, fontFamily: tx.font, direction: tx.dir, textAlign: lang === "ar" ? "right" : "left", whiteSpace: "pre-wrap" }}>
+                    <div style={{ backgroundColor: isDark ? "rgba(251,146,60,0.18)" : "rgba(251,146,60,0.14)", border: `1px solid ${isDark ? "rgba(251,146,60,0.3)" : "rgba(251,146,60,0.35)"}`, borderRadius: 14, padding: "10px 14px", fontSize: 14, color: isDark ? "#fed7aa" : "#7c2d12", lineHeight: 1.7, fontFamily: tx.font, direction: tx.dir, textAlign: lang === "ar" ? "right" : "left", whiteSpace: "pre-wrap" }}>
                       {msg.content}
                     </div>
                   ) : (
