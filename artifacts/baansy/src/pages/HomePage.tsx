@@ -116,9 +116,15 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
   const [currentSession, setCurrentSession] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [streaming, setStreaming] = useState(false);
-  const [typingSpeed] = useState(20);
+  const [typingSpeed, setTypingSpeed] = useState(20);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    api.get<{ typingSpeedMs: number; maxTokens: number }>("/chat/settings")
+      .then(s => setTypingSpeed(s.typingSpeedMs))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -198,21 +204,53 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
     setMessages(prev => [...prev, assistantMsg]);
 
     let accum = "";
+    let displayed = "";
+    let animQueue = "";
+    let animRunning = false;
+
+    const animateChars = (speed: number) => {
+      if (animRunning) return;
+      animRunning = true;
+      const step = () => {
+        if (animQueue.length === 0) { animRunning = false; return; }
+        displayed += animQueue[0];
+        animQueue = animQueue.slice(1);
+        const snap = displayed;
+        setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: snap } : m));
+        setTimeout(step, speed);
+      };
+      step();
+    };
+
     try {
       await streamChat(
         sessionId,
         content,
         (chunk) => {
           accum += chunk;
-          setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: accum } : m));
+          if (typingSpeed <= 0) {
+            displayed = accum;
+            setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: accum } : m));
+          } else {
+            animQueue += chunk;
+            animateChars(typingSpeed);
+          }
         },
-        () => setStreaming(false),
+        () => {
+          if (typingSpeed > 0) {
+            const waitForAnim = setInterval(() => {
+              if (animQueue.length === 0) { clearInterval(waitForAnim); setStreaming(false); }
+            }, 50);
+          } else {
+            setStreaming(false);
+          }
+        },
       );
     } catch {
       setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: "حدث خطأ. حاول مرة أخرى." } : m));
       setStreaming(false);
     }
-  }, [inputVal, streaming, user, currentSession]);
+  }, [inputVal, streaming, user, currentSession, typingSpeed]);
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }

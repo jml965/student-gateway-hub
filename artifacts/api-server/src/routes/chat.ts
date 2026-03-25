@@ -19,6 +19,18 @@ const router = Router();
 // ── الذاكرة القصيرة: آخر 20 رسالة من الجلسة الحالية ──────────────────────────
 const SHORT_TERM_WINDOW = 20;
 
+// ── إعدادات عامة (بدون مصادقة) ──────────────────────────────────────────────
+router.get("/settings", async (_req, res) => {
+  const [settings] = await db.select({
+    typingSpeedMs: aiSettingsTable.typingSpeedMs,
+    maxTokens: aiSettingsTable.maxTokens,
+  }).from(aiSettingsTable).limit(1);
+  res.json({
+    typingSpeedMs: settings?.typingSpeedMs ?? 20,
+    maxTokens: settings?.maxTokens ?? 500,
+  });
+});
+
 router.use(requireAuth);
 
 router.get("/sessions", async (req: AuthRequest, res) => {
