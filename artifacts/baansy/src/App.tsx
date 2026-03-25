@@ -25,7 +25,7 @@ function detectInitialPage(): Page {
 export default function App() {
   const [page, setPage] = useState<Page>(detectInitialPage);
   const [lang, setLang] = useState<Lang>("ar");
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
