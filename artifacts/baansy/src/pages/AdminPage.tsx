@@ -48,7 +48,17 @@ interface AppListRecord {
   uniNameEn: string; uniNameAr: string;
 }
 
-const MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"];
+const MODELS = [
+  "gpt-4.1",
+  "gpt-4.1-mini",
+  "gpt-4.1-nano",
+  "gpt-4o",
+  "gpt-4o-mini",
+  "o3-mini",
+  "o4-mini",
+  "gpt-4-turbo",
+  "gpt-3.5-turbo",
+];
 const DOC_TYPES: Record<string, { ar: string; en: string }> = {
   passport: { ar: "جواز سفر", en: "Passport" },
   degree: { ar: "شهادة جامعية", en: "Degree Certificate" },
