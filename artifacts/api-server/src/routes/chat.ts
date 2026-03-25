@@ -398,7 +398,12 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
       ? "خدمة الذكاء الاصطناعي مشغولة حالياً. يرجى المحاولة بعد لحظات."
       : "خطأ في الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى.";
     await db.insert(chatMessagesTable).values({ sessionId, role: "assistant", content: errMsg });
-    res.json({ content: errMsg });
+    // أرسل الخطأ بصيغة SSE لكي يعرضه الفرونتند بشكل صحيح
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.write(`data: ${JSON.stringify({ content: errMsg, done: true })}\n\n`);
+    res.end();
     return;
   }
 
