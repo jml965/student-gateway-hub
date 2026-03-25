@@ -406,7 +406,7 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {msg.role === "user" ? (
-                    <div style={{ backgroundColor: isDark ? "rgba(251,146,60,0.18)" : "rgba(251,146,60,0.14)", border: `1px solid ${isDark ? "rgba(251,146,60,0.3)" : "rgba(251,146,60,0.35)"}`, borderRadius: 14, padding: "10px 14px", fontSize: 14, color: isDark ? "#fed7aa" : "#7c2d12", lineHeight: 1.7, fontFamily: tx.font, direction: tx.dir, textAlign: lang === "ar" ? "right" : "left", whiteSpace: "pre-wrap" }}>
+                    <div style={{ padding: "6px 2px", fontSize: 14, color: isDark ? "#fed7aa" : "#92400e", lineHeight: 1.7, fontFamily: tx.font, direction: tx.dir, textAlign: lang === "ar" ? "right" : "left", whiteSpace: "pre-wrap" }}>
                       {msg.content}
                     </div>
                   ) : (
@@ -416,13 +416,13 @@ export default function HomePage({ lang, setLang, theme, setTheme, navigate, isM
                           part.type === "card" ? (
                             <ServiceCard key={pi} type={part.value} lang={lang} theme={theme} />
                           ) : (
-                            <div key={pi} style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 14, padding: "10px 14px", fontSize: 14, color: textMain, lineHeight: 1.7, fontFamily: tx.font, direction: tx.dir, textAlign: lang === "ar" ? "right" : "left", whiteSpace: "pre-wrap", marginBottom: 4 }}>
+                            <div key={pi} style={{ padding: "6px 2px", fontSize: 14, color: textMain, lineHeight: 1.7, fontFamily: tx.font, direction: tx.dir, textAlign: lang === "ar" ? "right" : "left", whiteSpace: "pre-wrap", marginBottom: 4 }}>
                               {part.value}
                             </div>
                           )
                         )
                       ) : (
-                        streaming && <div style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 14, padding: "10px 14px", fontSize: 14, color: textMain, fontFamily: tx.font }}><span style={{ opacity: .5 }}>{tx.thinking}</span></div>
+                        streaming && <div style={{ padding: "6px 2px", fontSize: 14, color: textMuted, fontFamily: tx.font }}><span style={{ opacity: .5 }}>{tx.thinking}</span></div>
                       )}
                       {msg.role === "assistant" && streaming && msg.content && (
                         <span style={{ display: "inline-block", width: 2, height: 16, backgroundColor: accentBlue, marginInlineStart: 2, animation: "blink 1s infinite", verticalAlign: "middle" }} />
