@@ -377,9 +377,6 @@ export default function ServiceCard({ type, lang, theme, onServiceRequested }: S
           })}
         </div>
 
-        <a href={svc.link} target="_blank" rel="noopener noreferrer" style={{ ...ctaBtn, marginTop: 10 }}>
-          {svc.cta}
-        </a>
       </div>
     );
   }
