@@ -12,3 +12,4 @@ export * from "./services";
 export * from "./chat";
 export * from "./ai-settings";
 export * from "./payments";
+export * from "./user-memory";

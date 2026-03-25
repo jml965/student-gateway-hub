@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { callOpenAI } from "../lib/openai";
 import {
   db,
   universitiesTable,
@@ -483,21 +484,17 @@ Respond ONLY with valid JSON (no markdown):
   "recommendations": "What the university should check or ask for"
 }`;
 
-      const aiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
+      const { data: aiData } = await callOpenAI(
+        process.env.OPENAI_API_KEY!,
+        "gpt-4o",
+        ["gpt-4o-mini", "gpt-3.5-turbo"],
+        {
           messages: [{ role: "user", content: prompt }],
           max_tokens: 300,
           temperature: 0.3,
-        }),
-      });
-      const aiData = await aiRes.json() as any;
-      const content = aiData.choices?.[0]?.message?.content?.trim() || "{}";
+        }
+      );
+      const content = (aiData.choices as any)?.[0]?.message?.content?.trim() || "{}";
       const parsed = JSON.parse(content);
 
       return {
