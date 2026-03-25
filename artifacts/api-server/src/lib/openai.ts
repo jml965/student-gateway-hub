@@ -1,5 +1,10 @@
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const BASE_URL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "https://api.openai.com/v1";
+const OPENAI_URL = `${BASE_URL}/chat/completions`;
+
+export function getApiKey(): string {
+  return process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
+}
 
 export const CHAT_FALLBACK_MODELS = [
   "gpt-4o",
@@ -33,12 +38,13 @@ export async function callOpenAI(
   fallbacks: string[],
   body: Record<string, unknown>,
 ): Promise<{ data: Record<string, unknown>; modelUsed: string }> {
+  const key = apiKey || getApiKey();
   const chain = buildFallbackChain(primaryModel, fallbacks);
   let lastStatus = 0;
   for (const model of chain) {
     const res = await fetch(OPENAI_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, model }),
     });
     lastStatus = res.status;
@@ -60,11 +66,12 @@ export async function callOpenAIStream(
   fallbacks: string[],
   body: Record<string, unknown>,
 ): Promise<{ response: Response; modelUsed: string }> {
+  const key = apiKey || getApiKey();
   const chain = buildFallbackChain(primaryModel, fallbacks);
   for (const model of chain) {
     const res = await fetch(OPENAI_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, model, stream: true }),
     });
     if (res.ok && res.body) return { response: res, modelUsed: model };

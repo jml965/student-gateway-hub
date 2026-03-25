@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { callOpenAIStream, callOpenAI, CHAT_FALLBACK_MODELS, CLASSIFY_FALLBACK_MODELS } from "../lib/openai";
+import { callOpenAIStream, callOpenAI, CHAT_FALLBACK_MODELS, CLASSIFY_FALLBACK_MODELS, getApiKey } from "../lib/openai";
 import {
   db,
   chatSessionsTable,
@@ -327,13 +327,7 @@ router.post("/sessions/:sessionId/send", async (req: AuthRequest, res) => {
 
   await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: content.trim() });
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    const errMsg = "مفتاح OpenAI API غير مضبوط. يرجى إضافته من لوحة التحكم.";
-    await db.insert(chatMessagesTable).values({ sessionId, role: "assistant", content: errMsg });
-    res.json({ content: errMsg });
-    return;
-  }
+  const apiKey = getApiKey();
 
   // ── تحميل الإعدادات + ملف الطالب + الذاكرة بالتوازي ──
   const [settingsRes, userRes, memoryRes, applicationsRes] = await Promise.all([

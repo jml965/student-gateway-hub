@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { callOpenAI } from "../lib/openai";
+import { callOpenAI, getApiKey } from "../lib/openai";
 import {
   db,
   universitiesTable,
@@ -485,7 +485,7 @@ Respond ONLY with valid JSON (no markdown):
 }`;
 
       const { data: aiData } = await callOpenAI(
-        process.env.OPENAI_API_KEY!,
+        getApiKey(),
         "gpt-4o",
         ["gpt-4o-mini", "gpt-3.5-turbo"],
         {
