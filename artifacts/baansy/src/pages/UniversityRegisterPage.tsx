@@ -78,12 +78,20 @@ export default function UniversityRegisterPage({ lang, theme, navigate }: Props)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const requiredFields: (keyof typeof form)[] = ["contactName", "email", "password", "nameAr", "nameEn", "country", "city"];
+
+  const isInvalid = (k: keyof typeof form) => submitted && requiredFields.includes(k) && !form[k].trim();
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitted(true);
+    const hasEmpty = requiredFields.some(k => !form[k].trim());
+    if (hasEmpty) return;
     setError("");
     setLoading(true);
     try {
@@ -96,15 +104,27 @@ export default function UniversityRegisterPage({ lang, theme, navigate }: Props)
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "10px 12px", border: `1.5px solid ${border}`,
-    borderRadius: 8, background: isDark ? "#1e2537" : "#f8faff",
+  const forcedLtr = new Set<keyof typeof form>(["email", "password", "phone", "website", "nameEn", "descriptionEn"]);
+  const forcedRtl = new Set<keyof typeof form>(["nameAr", "descriptionAr"]);
+
+  const fieldDir = (k: keyof typeof form): "ltr" | "rtl" =>
+    forcedLtr.has(k) ? "ltr" : forcedRtl.has(k) ? "rtl" : t.dir;
+
+  const inputStyle = (k: keyof typeof form): React.CSSProperties => ({
+    width: "100%", padding: "10px 12px",
+    border: `1.5px solid ${isInvalid(k) ? "#ef4444" : border}`,
+    borderRadius: 8, background: isInvalid(k) ? (isDark ? "#2d1515" : "#fff5f5") : (isDark ? "#1e2537" : "#f8faff"),
     color: text, fontSize: 14, outline: "none", boxSizing: "border-box",
-    fontFamily: lang === "ar" ? "'Cairo',sans-serif" : "'Inter',sans-serif",
-    direction: t.dir,
-  };
+    fontFamily: lang === "ar" && !forcedLtr.has(k) ? "'Cairo',sans-serif" : "'Inter',sans-serif",
+    direction: fieldDir(k),
+    textAlign: fieldDir(k) === "ltr" ? "left" : "right",
+    transition: "border-color .2s, background .2s",
+  });
 
   const labelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: sub, marginBottom: 4, display: "block" };
+  const errMsg = (k: keyof typeof form) => isInvalid(k)
+    ? <span style={{ fontSize: 11, color: "#ef4444", marginTop: 3, display: "block" }}>{lang === "ar" ? "هذا الحقل مطلوب" : "This field is required"}</span>
+    : null;
 
   if (done) {
     return (
@@ -139,19 +159,22 @@ export default function UniversityRegisterPage({ lang, theme, navigate }: Props)
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={labelStyle}>{t.contactName} *</label>
-                <input required value={form.contactName} onChange={set("contactName")} style={inputStyle} />
+                <input dir={fieldDir("contactName")} value={form.contactName} onChange={set("contactName")} style={inputStyle("contactName")} />
+                {errMsg("contactName")}
               </div>
               <div>
                 <label style={labelStyle}>{t.email} *</label>
-                <input required type="email" value={form.email} onChange={set("email")} style={inputStyle} />
+                <input dir="ltr" type="email" inputMode="email" value={form.email} onChange={set("email")} style={inputStyle("email")} />
+                {errMsg("email")}
               </div>
               <div>
                 <label style={labelStyle}>{t.password} *</label>
-                <input required type="password" minLength={8} value={form.password} onChange={set("password")} style={inputStyle} />
+                <input dir="ltr" type="password" value={form.password} onChange={set("password")} style={inputStyle("password")} />
+                {errMsg("password")}
               </div>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={labelStyle}>{t.phone}</label>
-                <input value={form.phone} onChange={set("phone")} style={inputStyle} />
+                <input dir="ltr" type="tel" inputMode="tel" value={form.phone} onChange={set("phone")} style={inputStyle("phone")} />
               </div>
             </div>
           </div>
@@ -163,37 +186,41 @@ export default function UniversityRegisterPage({ lang, theme, navigate }: Props)
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div>
                 <label style={labelStyle}>{t.nameAr} *</label>
-                <input required value={form.nameAr} onChange={set("nameAr")} style={{ ...inputStyle, direction: "rtl" }} />
+                <input dir="rtl" lang="ar" value={form.nameAr} onChange={set("nameAr")} style={inputStyle("nameAr")} />
+                {errMsg("nameAr")}
               </div>
               <div>
                 <label style={labelStyle}>{t.nameEn} *</label>
-                <input required value={form.nameEn} onChange={set("nameEn")} style={{ ...inputStyle, direction: "ltr" }} />
+                <input dir="ltr" lang="en" value={form.nameEn} onChange={set("nameEn")} style={inputStyle("nameEn")} />
+                {errMsg("nameEn")}
               </div>
               <div>
                 <label style={labelStyle}>{t.country} *</label>
-                <input required value={form.country} onChange={set("country")} style={inputStyle} />
+                <input dir={fieldDir("country")} value={form.country} onChange={set("country")} style={inputStyle("country")} />
+                {errMsg("country")}
               </div>
               <div>
                 <label style={labelStyle}>{t.city} *</label>
-                <input required value={form.city} onChange={set("city")} style={inputStyle} />
+                <input dir={fieldDir("city")} value={form.city} onChange={set("city")} style={inputStyle("city")} />
+                {errMsg("city")}
               </div>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={labelStyle}>{t.website}</label>
-                <input type="url" value={form.website} onChange={set("website")} style={inputStyle} placeholder="https://" />
+                <input dir="ltr" type="url" inputMode="url" value={form.website} onChange={set("website")} style={inputStyle("website")} placeholder="https://" />
               </div>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={labelStyle}>{t.address}</label>
-                <input value={form.address} onChange={set("address")} style={inputStyle} />
+                <input dir={fieldDir("address")} value={form.address} onChange={set("address")} style={inputStyle("address")} />
               </div>
               <div>
                 <label style={labelStyle}>{t.descAr}</label>
-                <textarea value={form.descriptionAr} onChange={set("descriptionAr")} rows={3}
-                  style={{ ...inputStyle, resize: "vertical", direction: "rtl" }} />
+                <textarea dir="rtl" lang="ar" value={form.descriptionAr} onChange={set("descriptionAr")} rows={3}
+                  style={{ ...inputStyle("descriptionAr"), resize: "vertical" }} />
               </div>
               <div>
                 <label style={labelStyle}>{t.descEn}</label>
-                <textarea value={form.descriptionEn} onChange={set("descriptionEn")} rows={3}
-                  style={{ ...inputStyle, resize: "vertical", direction: "ltr" }} />
+                <textarea dir="ltr" lang="en" value={form.descriptionEn} onChange={set("descriptionEn")} rows={3}
+                  style={{ ...inputStyle("descriptionEn"), resize: "vertical" }} />
               </div>
             </div>
           </div>
