@@ -17,9 +17,9 @@ const T = {
       title: "السكن الطلابي",
       subtitle: "سكن مريح وآمن قريب من جامعتك",
       options: [
-        { label: "شقة مفروشة", desc: "مع مطبخ وأثاث كامل", price: "من 150$/شهر", badge: "الأكثر طلباً" },
-        { label: "غرفة طلابية", desc: "في مبنى طلابي متكامل", price: "من 80$/شهر", badge: "" },
-        { label: "استوديو خاص", desc: "للطلاب الراغبين في الخصوصية", price: "من 200$/شهر", badge: "" },
+        { label: "شقة مفروشة", desc: "مطبخ وأثاث كامل", price: "من $150/شهر", badge: "الأكثر طلباً", img: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=400&q=80" },
+        { label: "غرفة طلابية", desc: "مبنى طلابي متكامل", price: "من $80/شهر", badge: "", img: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80" },
+        { label: "استوديو خاص", desc: "خصوصية تامة واستقلالية", price: "من $200/شهر", badge: "فاخر", img: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&q=80" },
       ],
       cta: "استعرض خيارات السكن",
       link: "https://housing.baansy.com",
@@ -103,9 +103,9 @@ const T = {
       title: "Student Housing",
       subtitle: "Comfortable & safe housing near your university",
       options: [
-        { label: "Furnished Apartment", desc: "Full kitchen & furniture", price: "From $150/mo", badge: "Most Popular" },
-        { label: "Student Room", desc: "In a fully-equipped student building", price: "From $80/mo", badge: "" },
-        { label: "Private Studio", desc: "For students who prefer privacy", price: "From $200/mo", badge: "" },
+        { label: "Furnished Apartment", desc: "Full kitchen & furniture", price: "From $150/mo", badge: "Most Popular", img: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=400&q=80" },
+        { label: "Student Room", desc: "Fully-equipped student building", price: "From $80/mo", badge: "", img: "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&q=80" },
+        { label: "Private Studio", desc: "Full privacy & independence", price: "From $200/mo", badge: "Premium", img: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&q=80" },
       ],
       cta: "Browse Housing Options",
       link: "https://housing.baansy.com",
@@ -310,6 +310,79 @@ export default function ServiceCard({ type, lang, theme, onServiceRequested }: S
 
   const svc = tx[type as keyof typeof tx] as typeof tx.housing | undefined;
   if (!svc || !("options" in svc)) return null;
+
+  const hasImages = svc.options.some((o) => (o as any).img);
+
+  if (hasImages) {
+    return (
+      <div style={{ fontFamily: font, direction: isRTL ? "rtl" : "ltr", marginTop: 8 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: accentBlueText, margin: "0 0 2px" }}>{svc.title}</p>
+        <p style={{ fontSize: 11, color: textMuted, margin: "0 0 10px" }}>{svc.subtitle}</p>
+
+        <div className="hide-scrollbar" style={{
+          display: "flex",
+          gap: 10,
+          overflowX: "auto",
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
+          paddingBottom: 6,
+          scrollbarWidth: "none",
+        }}>
+          {svc.options.map((opt, i) => {
+            const imgOpt = opt as typeof opt & { img?: string };
+            return (
+              <div key={i} style={{
+                minWidth: 155,
+                maxWidth: 155,
+                flexShrink: 0,
+                scrollSnapAlign: "start",
+                backgroundColor: cardBg,
+                border: `1px solid ${cardBorder}`,
+                borderRadius: 14,
+                overflow: "hidden",
+                boxShadow: isDark ? "none" : "0 2px 8px rgba(0,0,0,.08)",
+                cursor: "pointer",
+              }}>
+                <div style={{ position: "relative" }}>
+                  {imgOpt.img && (
+                    <img
+                      src={imgOpt.img}
+                      alt={opt.label}
+                      style={{ width: "100%", height: 110, objectFit: "cover", display: "block" }}
+                    />
+                  )}
+                  {opt.badge && (
+                    <span style={{
+                      position: "absolute",
+                      top: 8,
+                      [isRTL ? "right" : "left"]: 8,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: "#fff",
+                      backgroundColor: accentBlue,
+                      borderRadius: 20,
+                      padding: "2px 8px",
+                    }}>{opt.badge}</span>
+                  )}
+                </div>
+                <div style={{ padding: "10px 10px 12px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: textMain, marginBottom: 3 }}>{opt.label}</div>
+                  <div style={{ fontSize: 11, color: textMuted, marginBottom: 6, lineHeight: 1.4 }}>{opt.desc}</div>
+                  {opt.price && (
+                    <div style={{ fontSize: 12, fontWeight: 800, color: accentBlueText }}>{opt.price}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <a href={svc.link} target="_blank" rel="noopener noreferrer" style={{ ...ctaBtn, marginTop: 10 }}>
+          {svc.cta}
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div style={containerStyle}>

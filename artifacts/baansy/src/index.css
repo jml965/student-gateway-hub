@@ -391,3 +391,7 @@
     inset: -1px;
   }
 }
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
