@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, referralsTable, referralPaymentsTable } from "@workspace/db";
+import { applicationsTable, specializationsTable, universitiesTable } from "@workspace/db";
 import { eq, and, desc, sql, count, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/middleware";
 import { randomBytes } from "crypto";
@@ -30,6 +31,9 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
     await db.update(usersTable).set({ referralCode: code }).where(eq(usersTable.id, userId));
   }
 
+  // Alias tables for joining student user
+  const studentUser = usersTable;
+
   const referrals = await db
     .select({
       id: referralsTable.id,
@@ -40,18 +44,137 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
       notes: referralsTable.notes,
       paidAt: referralsTable.paidAt,
       createdAt: referralsTable.createdAt,
-      studentId: usersTable.id,
-      studentName: usersTable.name,
-      studentEmail: usersTable.email,
+      studentId: studentUser.id,
+      studentName: studentUser.name,
+      studentEmail: studentUser.email,
     })
     .from(referralsTable)
-    .leftJoin(usersTable, eq(referralsTable.referredStudentId, usersTable.id))
+    .leftJoin(studentUser, eq(referralsTable.referredStudentId, studentUser.id))
     .where(eq(referralsTable.referrerId, userId))
     .orderBy(desc(referralsTable.createdAt));
 
-  const totalCommission = referrals.reduce((sum, r) => sum + parseFloat(r.commissionAmount || "0"), 0);
-  const totalPaid = referrals.reduce((sum, r) => sum + parseFloat(r.paidAmount || "0"), 0);
+  // For each referred student, get their latest application with university + major
+  const studentIds = referrals.map(r => r.studentId).filter(Boolean) as number[];
+
+  type AppInfo = {
+    studentId: number;
+    appStatus: string;
+    universityId: number;
+    universityNameAr: string;
+    universityNameEn: string;
+    universityCountry: string;
+    majorNameAr: string;
+    majorNameEn: string;
+    tuitionFee: string | null;
+    currency: string;
+    appCreatedAt: Date;
+  };
+
+  let appsByStudent: Map<number, AppInfo[]> = new Map();
+  if (studentIds.length > 0) {
+    const apps = await db
+      .select({
+        studentId: applicationsTable.studentId,
+        appStatus: applicationsTable.status,
+        universityId: universitiesTable.id,
+        universityNameAr: universitiesTable.nameAr,
+        universityNameEn: universitiesTable.nameEn,
+        universityCountry: universitiesTable.country,
+        majorNameAr: specializationsTable.nameAr,
+        majorNameEn: specializationsTable.nameEn,
+        tuitionFee: specializationsTable.tuitionFee,
+        currency: specializationsTable.currency,
+        appCreatedAt: applicationsTable.createdAt,
+      })
+      .from(applicationsTable)
+      .innerJoin(specializationsTable, eq(applicationsTable.specializationId, specializationsTable.id))
+      .innerJoin(universitiesTable, eq(specializationsTable.universityId, universitiesTable.id))
+      .where(inArray(applicationsTable.studentId, studentIds))
+      .orderBy(desc(applicationsTable.createdAt));
+
+    for (const app of apps) {
+      if (!appsByStudent.has(app.studentId)) appsByStudent.set(app.studentId, []);
+      appsByStudent.get(app.studentId)!.push(app as AppInfo);
+    }
+  }
+
+  // Enrich referrals with stage + applications
+  const enriched = referrals.map(r => {
+    const apps = r.studentId ? (appsByStudent.get(r.studentId) ?? []) : [];
+    const acceptedApps = apps.filter(a => a.appStatus === "accepted");
+    const activeApps = apps.filter(a => !["withdrawn", "rejected"].includes(a.appStatus));
+
+    let stage: "potential" | "applied" | "enrolled" = "potential";
+    if (acceptedApps.length > 0) stage = "enrolled";
+    else if (activeApps.length > 0) stage = "applied";
+
+    return {
+      ...r,
+      stage,
+      applications: apps.map(a => ({
+        status: a.appStatus,
+        universityId: a.universityId,
+        universityNameAr: a.universityNameAr,
+        universityNameEn: a.universityNameEn,
+        universityCountry: a.universityCountry,
+        majorNameAr: a.majorNameAr,
+        majorNameEn: a.majorNameEn,
+        tuitionFee: a.tuitionFee,
+        currency: a.currency,
+        appliedAt: a.appCreatedAt,
+      })),
+    };
+  });
+
+  const totalCommission = enriched.reduce((sum, r) => sum + parseFloat(r.commissionAmount || "0"), 0);
+  const totalPaid = enriched.reduce((sum, r) => sum + parseFloat(r.paidAmount || "0"), 0);
   const totalUnpaid = totalCommission - totalPaid;
+
+  // Build per-university statement
+  const universityMap: Record<number, {
+    universityId: number; universityNameAr: string; universityNameEn: string; universityCountry: string;
+    students: Array<{ studentName: string | null; studentEmail: string | null; majorNameAr: string; majorNameEn: string; tuitionFee: string | null; currency: string; commissionAmount: string | null; paidAmount: string; paymentStatus: string; }>;
+    totalCommission: number; totalPaid: number;
+  }> = {};
+
+  for (const ref of enriched) {
+    const enrolledApps = ref.applications.filter(a => a.status === "accepted");
+    for (const app of enrolledApps) {
+      if (!universityMap[app.universityId]) {
+        universityMap[app.universityId] = {
+          universityId: app.universityId,
+          universityNameAr: app.universityNameAr,
+          universityNameEn: app.universityNameEn,
+          universityCountry: app.universityCountry,
+          students: [],
+          totalCommission: 0,
+          totalPaid: 0,
+        };
+      }
+      const comm = parseFloat(ref.commissionAmount || "0");
+      const paid = parseFloat(ref.paidAmount || "0");
+      universityMap[app.universityId].students.push({
+        studentName: ref.studentName,
+        studentEmail: ref.studentEmail,
+        majorNameAr: app.majorNameAr,
+        majorNameEn: app.majorNameEn,
+        tuitionFee: app.tuitionFee,
+        currency: app.currency,
+        commissionAmount: ref.commissionAmount,
+        paidAmount: ref.paidAmount,
+        paymentStatus: ref.paymentStatus,
+      });
+      universityMap[app.universityId].totalCommission += comm;
+      universityMap[app.universityId].totalPaid += paid;
+    }
+  }
+
+  const universityStatements = Object.values(universityMap).map(u => ({
+    ...u,
+    totalCommission: u.totalCommission.toFixed(2),
+    totalPaid: u.totalPaid.toFixed(2),
+    totalUnpaid: (u.totalCommission - u.totalPaid).toFixed(2),
+  }));
 
   const frontendUrl =
     process.env.FRONTEND_URL ??
@@ -60,9 +183,13 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
   res.json({
     referralCode: code,
     referralLink: `${frontendUrl}/signup?ref=${code}`,
-    referrals,
+    referrals: enriched,
+    universityStatements,
     summary: {
-      totalReferrals: referrals.length,
+      totalReferrals: enriched.length,
+      totalPotential: enriched.filter(r => r.stage === "potential").length,
+      totalApplied: enriched.filter(r => r.stage === "applied").length,
+      totalEnrolled: enriched.filter(r => r.stage === "enrolled").length,
       totalCommission: totalCommission.toFixed(2),
       totalPaid: totalPaid.toFixed(2),
       totalUnpaid: totalUnpaid.toFixed(2),
